@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "The mandatory, deterministic MCP/A2A gateway that turns every agent tool call into a provably replayable, taint-safe, policy-enforced execution."
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 authors = [
     { name = "Piyush Tiwari", email = "piyushptiwari1@users.noreply.github.com" },
 ]
@@ -32,6 +32,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Security",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
@@ -42,7 +43,7 @@ dependencies = [
     "uvicorn[standard]>=0.30",
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
-    "typer[all]>=0.12",
+    "typer>=0.12",
     "anyio>=4.4",
     "httpx>=0.27",
     "structlog>=24.1",
@@ -97,7 +98,7 @@ mcpguard = "mcpguard.cli:app"
 packages = ["src/mcpguard"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py313"
 line-length = 120
 src = ["src", "tests"]
 
@@ -122,7 +123,7 @@ ignore = ["S101", "S603", "S607"]  # allow assert in tests, subprocess
 known-first-party = ["mcpguard"]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.13"
 strict = true
 warn_return_any = true
 warn_unused_configs = true

@@ -14,12 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Install dependencies
-        run: |
-          pip install -e ".[dev]"
+        run: uv pip install --system -e ".[dev]"
       - name: Ruff lint
         run: ruff check src/ tests/
       - name: Ruff format check
@@ -34,17 +34,17 @@ jobs:
         python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: |
-          pip install -e ".[dev]"
+        run: uv pip install --system -e ".[dev]"
       - name: Run tests
         run: |
           pytest tests/ -v --tb=short --cov=mcpguard --cov-report=xml --cov-report=term-missing
       - name: Upload coverage
-        if: matrix.python-version == '3.12'
+        if: matrix.python-version == '3.13'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
@@ -54,11 +54,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.13"
       - name: Install dependencies
-        run: pip install -e ".[dev]" pip-audit
+        run: uv pip install --system -e ".[dev]" pip-audit
       - name: pip-audit
         run: pip-audit --strict --desc on
       - name: Check for secrets
