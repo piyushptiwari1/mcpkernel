@@ -22,7 +22,8 @@ MCPGuard is an open-source **Execution Sovereignty Stack** — a mandatory, dete
 - Async-first using `asyncio`
 - Type hints on all public APIs
 - Tests in `tests/` using `pytest` with async support
-- All 173 tests must pass before merging to main
+- All 291 tests must pass before merging to main
+- Coverage must be ≥80% (`python -m pytest --cov=mcpguard`)
 - Lint clean: `ruff check src/ tests/` must show zero errors
 - Format clean: `ruff format --check src/ tests/` must pass
 

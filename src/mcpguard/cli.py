@@ -32,11 +32,11 @@ def serve(
     from mcpguard.utils import configure_logging
 
     configure_logging(level=log_level)
-    settings = load_config(config_path=str(config) if config else None)
+    settings = load_config(config_path=config)
     settings.proxy.host = host
     settings.proxy.port = port
 
-    asyncio.run(start_proxy_server(settings))
+    start_proxy_server(settings)
 
 
 # ── Policy ─────────────────────────────────────────────────────────────
@@ -236,7 +236,7 @@ def config_show(
     """Show effective configuration."""
     from mcpguard.config import load_config
 
-    settings = load_config(config_path=str(config) if config else None)
+    settings = load_config(config_path=config)
     typer.echo(settings.model_dump_json(indent=2))
 
 

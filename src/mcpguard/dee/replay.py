@@ -80,4 +80,4 @@ async def validate_replay_integrity(
     if record is None:
         raise ReplayError(f"Original trace not found: {original_trace_id}")
 
-    return record["output_hash"] == replay_trace.output_hash
+    return bool(record["output_hash"] == replay_trace.output_hash)

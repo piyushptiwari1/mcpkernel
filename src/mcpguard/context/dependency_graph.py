@@ -70,7 +70,7 @@ def build_dependency_graph(code: str) -> DependencyGraph:
 
     # First pass: collect definitions
     for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             graph.add_node(node.name, "function")
         elif isinstance(node, ast.ClassDef):
             graph.add_node(node.name, "class")
@@ -85,7 +85,7 @@ def build_dependency_graph(code: str) -> DependencyGraph:
 
     # Second pass: collect references
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef | ast.AsyncFunctionDef, ast.ClassDef)):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             _collect_references(node, node.name, graph)
 
     return graph

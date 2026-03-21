@@ -114,11 +114,12 @@ async def _sign_trace(
     try:
         from sigstore.sign import SigningContext
 
-        ctx = SigningContext.production()
+        ctx = SigningContext.production()  # type: ignore[attr-defined]
         with ctx.signer() as signer:
             result = signer.sign_artifact(payload.encode())
             # Serialize bundle to JSON string
-            return result.bundle.to_json()
+            bundle_json: str = result.bundle.to_json()
+            return bundle_json
     except ImportError:
         logger.debug("sigstore not installed — trace signing disabled")
         return None

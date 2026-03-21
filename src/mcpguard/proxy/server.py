@@ -11,7 +11,10 @@ from __future__ import annotations
 import contextlib
 import json
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 import uvicorn
 from fastapi import FastAPI, Request, Response
@@ -50,7 +53,7 @@ def get_pipeline() -> InterceptorPipeline:
 # Lifespan
 # ---------------------------------------------------------------------------
 @asynccontextmanager
-async def _lifespan(app: FastAPI):  # type: ignore[type-arg]
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     global _rate_limiter, _auth_backend, _settings, _execute_fn
     _settings = get_config()
 
@@ -73,7 +76,7 @@ async def _lifespan(app: FastAPI):  # type: ignore[type-arg]
     # --- Wire interceptor pipeline hooks ---
     # Policy engine
     from mcpguard.policy import PolicyAction, PolicyEngine, load_policy_file
-    from mcpguard.proxy.hooks import AuditHook, DEEHook, PolicyHook, TaintHook
+    from mcpguard.proxy.hooks import AuditHook, DEEHook, EBPFHook, PolicyHook, TaintHook
 
     policy_engine = PolicyEngine(
         default_action=PolicyAction(_settings.policy.default_action),
@@ -83,6 +86,20 @@ async def _lifespan(app: FastAPI):  # type: ignore[type-arg]
             rules = load_policy_file(policy_path)
             policy_engine.add_rules(rules)
     _pipeline.register(PolicyHook(policy_engine))
+
+    # eBPF / network egress enforcement
+    if _settings.ebpf.enabled:
+        from mcpguard.ebpf import EBPFProbe, NetworkRedirector
+        from mcpguard.ebpf.redirector import EgressRule
+
+        egress_rule = EgressRule(
+            allowed_domains=set(_settings.sandbox.allowed_egress_domains),
+        )
+        redirector = NetworkRedirector(egress_rule)
+        probe = EBPFProbe()
+        if probe.available:
+            await probe.start()
+        _pipeline.register(EBPFHook(redirector, probe=probe if probe.available else None))
 
     # Taint tracker
     from mcpguard.taint import TaintTracker, detect_tainted_sources
@@ -256,7 +273,7 @@ async def _do_execute(call: Any) -> ExecutionResult:
         code=json.dumps({"tool": call.tool_name, "arguments": call.arguments}),
         timeout=get_config().sandbox.default_timeout_seconds,
     )
-    return result
+    return ExecutionResult(**result.__dict__) if not isinstance(result, ExecutionResult) else result
 
 
 # ---------------------------------------------------------------------------

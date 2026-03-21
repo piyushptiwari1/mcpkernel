@@ -35,7 +35,7 @@ class WASMSandbox(SandboxBackend):
 
         def _run_wasm() -> ExecutionResult:
             try:
-                import wasmtime  # type: ignore[import-untyped]
+                import wasmtime
             except ImportError as exc:
                 raise SandboxError("wasmtime not installed — run: pip install 'mcpguard[wasm]'") from exc
 

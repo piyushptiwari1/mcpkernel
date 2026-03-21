@@ -144,6 +144,7 @@ class EBPFProbe:
             return
 
         def _handle_event(cpu: int, data: bytes, size: int) -> None:
+            assert self._bpf is not None
             event = self._bpf["events"].event(data)
             syscall = _SYSCALL_MAP.get(event.syscall_nr)
             if syscall:

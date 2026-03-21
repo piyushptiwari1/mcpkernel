@@ -167,7 +167,8 @@ class AuditLogger:
         assert self._db is not None
 
         cursor = await self._db.execute("SELECT COUNT(*) FROM audit_log")
-        total = (await cursor.fetchone())[0]
+        row = await cursor.fetchone()
+        total: int = row[0] if row else 0
 
         cursor = await self._db.execute("SELECT * FROM audit_log")
         rows = await cursor.fetchall()

@@ -29,7 +29,7 @@ class DockerSandbox(SandboxBackend):
             try:
                 import docker
 
-                self._client = docker.from_env()
+                self._client = docker.from_env()  # type: ignore[attr-defined]
             except Exception as exc:
                 raise SandboxError(f"Cannot connect to Docker daemon: {exc}") from exc
         return self._client

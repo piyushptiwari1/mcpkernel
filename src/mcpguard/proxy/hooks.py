@@ -143,3 +143,46 @@ class DEEHook(PluginHook):
             logger.debug("dee envelope stored", trace_id=trace.trace_id)
         except Exception:
             logger.warning("dee hook failed (non-fatal)", exc_info=True)
+
+
+class EBPFHook(PluginHook):
+    """Pre-execution hook: enforce network egress policy via NetworkRedirector."""
+
+    PRIORITY = 950  # Runs after policy, before taint
+    NAME = "ebpf"
+
+    def __init__(self, redirector: Any, *, probe: Any = None) -> None:
+        self._redirector = redirector
+        self._probe = probe
+
+    async def pre_execution(self, ctx: InterceptorContext) -> None:
+        for _key, value in ctx.call.arguments.items():
+            if not isinstance(value, str):
+                continue
+            host, port = _extract_host_port(value)
+            if host and not self._redirector.check_egress(host, port):
+                ctx.aborted = True
+                ctx.abort_reason = f"eBPF egress blocked: {host}:{port}"
+                logger.warning("ebpf hook blocked egress", host=host, port=port, tool=ctx.call.tool_name)
+                return
+
+    async def log(self, ctx: InterceptorContext) -> None:
+        if self._probe is not None:
+            events = self._probe.events
+            if events:
+                ctx.extra["ebpf_events"] = len(events)
+                self._probe.clear_events()
+
+
+def _extract_host_port(value: str) -> tuple[str, int]:
+    """Best-effort extraction of host and port from a URL string."""
+    import urllib.parse
+
+    try:
+        parsed = urllib.parse.urlparse(value)
+        if parsed.hostname:
+            port = parsed.port or (443 if parsed.scheme == "https" else 80)
+            return parsed.hostname, port
+    except Exception:  # noqa: S110
+        pass
+    return "", 0

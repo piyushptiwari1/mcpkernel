@@ -41,11 +41,17 @@ def setup_tracing(config: TracingSetup) -> Any | None:
 
         if config.otlp_endpoint:
             if config.otlp_protocol == "grpc":
-                from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-            else:
-                from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+                from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+                    OTLPSpanExporter as GrpcExporter,
+                )
 
-            exporter = OTLPSpanExporter(endpoint=config.otlp_endpoint)
+                exporter = GrpcExporter(endpoint=config.otlp_endpoint)
+            else:
+                from opentelemetry.exporter.otlp.proto.http.trace_exporter import (  # type: ignore[import-not-found]
+                    OTLPSpanExporter as HttpExporter,
+                )
+
+                exporter = HttpExporter(endpoint=config.otlp_endpoint)
             provider.add_span_processor(BatchSpanProcessor(exporter))
 
         trace.set_tracer_provider(provider)
