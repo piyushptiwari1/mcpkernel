@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 from enum import Enum
 from typing import Any
@@ -51,14 +53,25 @@ def _export_jsonl(entries: list[AuditEntry]) -> str:
 
 
 def _export_csv(entries: list[AuditEntry]) -> str:
-    header = "entry_id,timestamp,event_type,tool_name,agent_id,action,outcome,content_hash"
-    lines = [header]
+    output = io.StringIO()
+    fieldnames = [
+        "entry_id", "timestamp", "event_type", "tool_name",
+        "agent_id", "action", "outcome", "content_hash",
+    ]
+    writer = csv.DictWriter(output, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
+    writer.writeheader()
     for e in entries:
-        lines.append(
-            f"{e.entry_id},{e.timestamp},{e.event_type},{e.tool_name},"
-            f"{e.agent_id},{e.action},{e.outcome},{e.content_hash}"
-        )
-    return "\n".join(lines)
+        writer.writerow({
+            "entry_id": e.entry_id,
+            "timestamp": e.timestamp,
+            "event_type": e.event_type,
+            "tool_name": e.tool_name,
+            "agent_id": e.agent_id,
+            "action": e.action,
+            "outcome": e.outcome,
+            "content_hash": e.content_hash,
+        })
+    return output.getvalue().rstrip("\r\n")
 
 
 def _export_cef(entries: list[AuditEntry]) -> str:
