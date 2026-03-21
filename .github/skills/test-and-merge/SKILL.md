@@ -21,7 +21,6 @@ git log --oneline development..HEAD  # or HEAD..development
 
 ### Step 2: Run Full Test Suite
 ```bash
-cd /home/piyush/Desktop/SecureLLM
 python -m pytest tests/ -v --tb=short
 ```
 - All 106+ tests must pass
