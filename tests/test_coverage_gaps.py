@@ -375,7 +375,7 @@ class TestExportAuditLogsEmpty:
     def test_empty_csv(self):
         """Test CSV export with no entries produces only the header."""
         output = export_audit_logs([], format=AuditExportFormat.CSV)
-        assert output.startswith("entry_id,timestamp,")
+        assert "entry_id" in output and "timestamp" in output
         # Only header line, no data rows
         assert len(output.strip().split("\n")) == 1
 

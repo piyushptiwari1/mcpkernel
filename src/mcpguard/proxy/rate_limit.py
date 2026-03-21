@@ -33,15 +33,26 @@ class InMemoryRateLimiter:
     worker (uvicorn/asyncio).
     """
 
+    MAX_BUCKETS = 100_000  # Cap to prevent unbounded memory growth
+
     def __init__(self, *, requests_per_minute: int = 60, burst_size: int = 10) -> None:
         self._rate = requests_per_minute / 60.0  # tokens per second
         self._burst = burst_size
         self._buckets: dict[str, _Bucket] = {}
 
+    def _evict_oldest(self) -> None:
+        """Evict the least-recently-used bucket when at capacity."""
+        if len(self._buckets) < self.MAX_BUCKETS:
+            return
+        oldest_key = min(self._buckets, key=lambda k: self._buckets[k].last_refill)
+        del self._buckets[oldest_key]
+        logger.debug("rate_limiter evicted bucket", key=oldest_key)
+
     def _get_bucket(self, key: str) -> _Bucket:
         now = time.monotonic()
         bucket = self._buckets.get(key)
         if bucket is None:
+            self._evict_oldest()
             bucket = _Bucket(tokens=float(self._burst), last_refill=now)
             self._buckets[key] = bucket
             return bucket

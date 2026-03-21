@@ -62,8 +62,9 @@ class PolicyEngine:
     priority number = highest precedence).
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, default_action: PolicyAction = PolicyAction.ALLOW) -> None:
         self._rules: list[PolicyRule] = []
+        self._default_action = default_action
 
     def add_rule(self, rule: PolicyRule) -> None:
         self._rules.append(rule)
@@ -113,9 +114,9 @@ class PolicyEngine:
 
         if not matched:
             return PolicyDecision(
-                action=PolicyAction.ALLOW,
+                action=self._default_action,
                 matched_rules=[],
-                reasons=["No matching policy rules — default allow"],
+                reasons=[f"No matching policy rules — default {self._default_action.value}"],
             )
 
         # Most restrictive action wins (DENY > SANDBOX > WARN > AUDIT > ALLOW)

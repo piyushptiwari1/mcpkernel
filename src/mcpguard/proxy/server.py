@@ -113,7 +113,20 @@ def create_proxy_app(settings: MCPGuardSettings | None = None) -> FastAPI:
     @app.post("/mcp")
     async def mcp_endpoint(request: Request) -> Response:
         """Primary MCP JSON-RPC handler — every tool call passes through here."""
+        # --- Request body size enforcement ---
+        content_length = request.headers.get("content-length")
+        max_size = real_settings.proxy.max_request_size_bytes
+        if content_length is not None and int(content_length) > max_size:
+            return JSONResponse(
+                build_jsonrpc_error(0, -32001, "Request body too large"),
+                status_code=413,
+            )
         body = await request.body()
+        if len(body) > max_size:
+            return JSONResponse(
+                build_jsonrpc_error(0, -32001, "Request body too large"),
+                status_code=413,
+            )
         try:
             raw = json.loads(body)
         except json.JSONDecodeError:
