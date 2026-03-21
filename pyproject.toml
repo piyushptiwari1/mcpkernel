@@ -3,9 +3,9 @@ requires = ["hatchling>=1.21"]
 build-backend = "hatchling.build"
 
 [project]
-name = "mcpguard"
+name = "mcpguard-gateway"
 version = "0.1.0"
-description = "The mandatory, deterministic MCP/A2A gateway that turns every agent tool call into a provably replayable, taint-safe, policy-enforced execution."
+description = "Open-source MCP/A2A security gateway — policy enforcement, taint tracking, sandboxed execution, deterministic envelopes, and Sigstore audit for every AI agent tool call. OWASP ASI 2026 compliant."
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.12"
@@ -23,6 +23,13 @@ keywords = [
     "deterministic-execution",
     "policy-enforcement",
     "owasp",
+    "ai-security",
+    "llm-security",
+    "genai-security",
+    "agent-sovereignty",
+    "model-context-protocol",
+    "sigstore",
+    "mcp-gateway",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",

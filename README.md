@@ -197,7 +197,7 @@ git clone https://github.com/piyushptiwari1/mcpguard.git
 cd mcpguard
 pip install -e ".[dev]"
 
-# Run tests (173 tests)
+# Run tests (345 tests, 86% coverage)
 pytest tests/ -v --cov=mcpguard
 
 # Lint
@@ -252,6 +252,32 @@ In 2026, latency is everything. If the gateway adds more than 50 ms to a tool ca
 Security matters, but **saving money sells faster**. The `context/` module already prunes tokens via TF-IDF + AST analysis.
 
 - **Plan:** Productize context minimization to deliver **≥ 30 % token reduction** while maintaining safety guarantees. When the gateway pays for itself in reduced LLM costs, adoption becomes a no-brainer.
+
+---
+
+## Competitive Landscape
+
+MCPGuard is a **runtime security gateway** — it sits in the live request path intercepting every tool call. This is fundamentally different from the scanners and config auditors in the ecosystem:
+
+| Project | What It Does | How MCPGuard Differs |
+|---------|-------------|---------------------|
+| [SaravanaGuhan/mcp-guard](https://github.com/SaravanaGuhan/mcp-guard) | Static/dynamic **vulnerability scanner** for MCP servers (CVSS v4.0 + AIVSS) | Scanner finds bugs *before* deployment; MCPGuard enforces policy *at runtime*. Complementary — run mcp-guard in CI, MCPGuard in prod. |
+| [aryanjp1/mcpguard](https://github.com/aryanjp1/mcpguard) (PyPI `mcpguard`) | MCP config **static scanner** — audits `claude_desktop_config.json` for OWASP MCP Top 10 | Config linter, no runtime component. Internally uses `mcpshield` package. Has claimed the `mcpguard` PyPI name (v0.1.0, Feb 2026). |
+| [kriskimmerle/mcpguard](https://github.com/kriskimmerle/mcpguard) | MCP config **auditor** — secrets, unpinned packages, Docker access. Zero deps. **Archived Feb 2026.** | Single-file config checker. Archived. No overlap. |
+| [mcpshield](https://pypi.org/project/mcpshield/) (PyPI) | Database security gateway for AI agents (Postgres, MySQL, Redis, MongoDB) with cloud dashboard | DB-only scope with SaaS dependency. MCPGuard is infrastructure-agnostic, self-hosted, and covers any MCP tool call. |
+| [mcp-proxy](https://pypi.org/project/mcp-proxy/) | Transport bridge (stdio ↔ SSE/StreamableHTTP) | Pure transport, zero security features. |
+
+**Bottom line:** No existing project provides the full runtime stack MCPGuard delivers — policy engine + taint tracking + sandboxing + deterministic envelopes + Sigstore audit + eBPF, all in one gateway.
+
+### PyPI Package Name
+
+The name `mcpguard` on PyPI is currently held by an unrelated config-scanning project (0 stars, 0 dependents, released Feb 2026). Our options:
+
+1. **Publish as `mcpguard-gateway`** — available, unambiguous, ship immediately once email is confirmed.
+2. **File a PEP 541 claim** — PyPI's [name reclaim policy](https://peps.python.org/pep-0541/) allows transfer of names from low-activity/abandoned projects. Takes time.
+3. **Rebrand the PyPI distribution name only** while keeping the GitHub repo name `mcpguard`.
+
+> Current decision: publish as **`mcpguard-gateway`** on PyPI (import name stays `mcpguard`). Revisit PEP 541 if traction warrants it.
 
 ---
 
