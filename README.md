@@ -218,6 +218,43 @@ Integration examples for popular AI agent frameworks:
 
 ---
 
+## Planned — The Road to Agent Sovereignty
+
+### 1. Inter-Agent Proof of Intent (Zero-Knowledge Tooling)
+
+Today agents trust the gateway. Tomorrow, **Agent A (Company X)** will call a tool on **Agent B (Company Y)** — across organizational boundaries.
+
+- **Problem:** How does Agent B verify that Agent A's call was authorized by a specific policy without revealing the underlying data?
+- **Plan:** Add a **ZK-Policy module** to MCPGuard. Agents will produce zero-knowledge proofs of policy compliance, enabling cross-org tool calls with cryptographic "sovereignty" — no private code or data is ever exposed.
+
+### 2. Physical-World Safety Layer (Robotic MCP)
+
+As MCP expands into IoT and Robotics (Digital Twins), the "sandbox" isn't just a VM — it's a **physical constraint**.
+
+- **Problem:** If an agent calls `move_arm()`, the gateway must simulate the physics impact before allowing the tainted command to reach the actuator.
+- **Plan:** Deterministic execution for hardware — a **physics-aware sandbox** that models real-world consequences (collision, force limits, safety envelopes) before any command reaches a physical device.
+
+### 3. Automated Red-Teaming ("Immune System" Mode)
+
+Instead of being a passive gatekeeper, the gateway should **attack itself**.
+
+- **Problem:** New prompt injection techniques and policy bypasses appear daily. Static rules can't keep up.
+- **Plan:** A **Shadow LLM module** that continuously attempts prompt injections against MCPGuard's own policies in real-time, discovering 0-day vulnerabilities in agent logic before adversaries do.
+
+### 4. Parallel Taint Analysis (Cold-Start Latency < 50 ms)
+
+In 2026, latency is everything. If the gateway adds more than 50 ms to a tool call, developers will disable it.
+
+- **Plan:** Run taint sink checking **concurrently** with code execution rather than sequentially — analyze while the sandbox is running, abort only if a violation is detected, keeping the hot path near zero additional latency.
+
+### 5. Context Minimization as a Cost Weapon
+
+Security matters, but **saving money sells faster**. The `context/` module already prunes tokens via TF-IDF + AST analysis.
+
+- **Plan:** Productize context minimization to deliver **≥ 30 % token reduction** while maintaining safety guarantees. When the gateway pays for itself in reduced LLM costs, adoption becomes a no-brainer.
+
+---
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and PR guidelines.
