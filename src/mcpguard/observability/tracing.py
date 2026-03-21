@@ -32,9 +32,9 @@ def setup_tracing(config: TracingSetup) -> Any | None:
 
     try:
         from opentelemetry import trace
+        from opentelemetry.sdk.resources import SERVICE_NAME, Resource
         from opentelemetry.sdk.trace import TracerProvider
         from opentelemetry.sdk.trace.export import BatchSpanProcessor
-        from opentelemetry.sdk.resources import Resource, SERVICE_NAME
 
         resource = Resource.create({SERVICE_NAME: config.service_name})
         provider = TracerProvider(resource=resource)

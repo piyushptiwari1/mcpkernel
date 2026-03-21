@@ -5,12 +5,14 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import aiosqlite
 
-from mcpguard.dee.envelope import ExecutionTrace
 from mcpguard.utils import get_logger
+
+if TYPE_CHECKING:
+    from mcpguard.dee.envelope import ExecutionTrace
 
 logger = get_logger(__name__)
 
@@ -110,14 +112,12 @@ class TraceStore:
             await self.open()
         assert self._db is not None
 
-        async with self._db.execute(
-            "SELECT * FROM traces WHERE trace_id = ?", (trace_id,)
-        ) as cursor:
+        async with self._db.execute("SELECT * FROM traces WHERE trace_id = ?", (trace_id,)) as cursor:
             row = await cursor.fetchone()
             if row is None:
                 return None
             columns = [d[0] for d in cursor.description]
-            return dict(zip(columns, row))
+            return dict(zip(columns, row, strict=False))
 
     async def list_traces(
         self,
@@ -141,13 +141,13 @@ class TraceStore:
             params.append(agent_id)
 
         where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-        query = f"SELECT * FROM traces {where} ORDER BY timestamp DESC LIMIT ?"
+        query = f"SELECT * FROM traces {where} ORDER BY timestamp DESC LIMIT ?"  # noqa: S608
         params.append(limit)
 
         async with self._db.execute(query, params) as cursor:
             rows = await cursor.fetchall()
             columns = [d[0] for d in cursor.description]
-            return [dict(zip(columns, row)) for row in rows]
+            return [dict(zip(columns, row, strict=False)) for row in rows]
 
     async def export_trace(self, trace_id: str, *, fmt: str = "json") -> str:
         """Export a trace for audit purposes."""

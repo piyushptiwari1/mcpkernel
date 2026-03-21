@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import ipaddress
 from dataclasses import dataclass, field
-from typing import Any
 
 from mcpguard.utils import get_logger
 
@@ -46,21 +45,19 @@ class NetworkRedirector:
             return True
 
         # Check domain allowlist
-        if self._rules.allowed_domains:
-            if host not in self._rules.allowed_domains:
-                # Check if it's a subdomain of an allowed domain
-                if not any(host.endswith(f".{d}") for d in self._rules.allowed_domains):
-                    logger.warning("egress blocked — domain not in allowlist", host=host)
-                    return False
+        if (
+            self._rules.allowed_domains
+            and host not in self._rules.allowed_domains
+            and not any(host.endswith(f".{d}") for d in self._rules.allowed_domains)
+        ):
+            logger.warning("egress blocked — domain not in allowlist", host=host)
+            return False
 
         # Check CIDR allowlist (if IP address)
         if self._rules.allowed_cidrs:
             try:
                 addr = ipaddress.ip_address(host)
-                if not any(
-                    addr in ipaddress.ip_network(cidr, strict=False)
-                    for cidr in self._rules.allowed_cidrs
-                ):
+                if not any(addr in ipaddress.ip_network(cidr, strict=False) for cidr in self._rules.allowed_cidrs):
                     logger.warning("egress blocked — IP not in allowed CIDRs", host=host)
                     return False
             except ValueError:

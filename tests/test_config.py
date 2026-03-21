@@ -1,15 +1,12 @@
 """Tests for mcpguard.config — settings loading and validation."""
 
-import os
 from pathlib import Path
 
-import pytest
-
 from mcpguard.config import (
+    LogLevel,
     MCPGuardSettings,
     SandboxBackend,
     TaintMode,
-    LogLevel,
     load_config,
 )
 
@@ -38,15 +35,9 @@ class TestConfigLoading:
 
     def test_load_from_yaml(self, tmp_path: Path):
         config_file = tmp_path / "test_config.yaml"
-        config_file.write_text(
-            "proxy:\n"
-            "  host: 0.0.0.0\n"
-            "  port: 9000\n"
-            "sandbox:\n"
-            "  backend: wasm\n"
-        )
+        config_file.write_text("proxy:\n  host: 0.0.0.0\n  port: 9000\nsandbox:\n  backend: wasm\n")
         settings = load_config(config_path=str(config_file))
-        assert settings.proxy.host == "0.0.0.0"
+        assert settings.proxy.host == "0.0.0.0"  # noqa: S104
         assert settings.proxy.port == 9000
         assert settings.sandbox.backend == SandboxBackend.WASM
 

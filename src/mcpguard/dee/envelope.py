@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Awaitable
+from typing import TYPE_CHECKING, Any
 
-from mcpguard.proxy.interceptor import ExecutionResult, MCPToolCall
 from mcpguard.utils import generate_trace_id, get_logger, sha256_json
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from mcpguard.proxy.interceptor import ExecutionResult, MCPToolCall
 
 logger = get_logger(__name__)
 

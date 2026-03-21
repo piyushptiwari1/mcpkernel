@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
-
-from prometheus_client import Counter, Histogram, Gauge, Info, CollectorRegistry, generate_latest
+from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, Info, generate_latest
 
 from mcpguard.utils import get_logger
 

@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from enum import Enum, auto
 from dataclasses import dataclass
-from typing import Any
+from enum import Enum, auto
+from typing import TYPE_CHECKING, Any
 
-from mcpguard.dee.envelope import ExecutionTrace
-from mcpguard.dee.trace_store import TraceStore
 from mcpguard.dee.replay import replay
 from mcpguard.utils import DriftDetected, get_logger
+
+if TYPE_CHECKING:
+    from mcpguard.dee.envelope import ExecutionTrace
+    from mcpguard.dee.trace_store import TraceStore
 
 logger = get_logger(__name__)
 
@@ -59,7 +61,7 @@ async def detect_drift(
     replay_hashes: list[str] = []
     last_replay: ExecutionTrace | None = None
 
-    for i in range(num_replays):
+    for _i in range(num_replays):
         new_trace = await replay(trace_id, store, execute_fn)
         replay_hashes.append(new_trace.output_hash)
         last_replay = new_trace

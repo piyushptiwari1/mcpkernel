@@ -18,16 +18,20 @@ MCPGuard is an open-source **Execution Sovereignty Stack** — a mandatory, dete
 - **eBPF**: Kernel-level syscall filtering
 
 ## Code Standards
-- Python 3.10+ (compatible with 3.10 through 3.12)
+- Python >=3.12 (tested on 3.12 and 3.13, developed on 3.13.12)
 - Async-first using `asyncio`
 - Type hints on all public APIs
 - Tests in `tests/` using `pytest` with async support
-- All 106 tests must pass before merging to main
+- All 173 tests must pass before merging to main
+- Lint clean: `ruff check src/ tests/` must show zero errors
+- Format clean: `ruff format --check src/ tests/` must pass
 
 ## Build & Test
 ```bash
-# Install
-pip install -e ".[dev]"
+# Install (using uv)
+uv venv --python 3.13
+source .venv/bin/activate
+uv pip install -e ".[dev]"
 
 # Run all tests
 python -m pytest tests/ -v --tb=short
@@ -35,8 +39,12 @@ python -m pytest tests/ -v --tb=short
 # Run specific test module
 python -m pytest tests/test_proxy.py -v
 
-# Lint
+# Lint + Format
 ruff check src/ tests/
+ruff format --check src/ tests/
+
+# Type check
+mypy src/mcpguard/
 ```
 
 ## Git Workflow
@@ -62,14 +70,15 @@ ruff check src/ tests/
 - Update `README.md` and `docs/USAGE.md` when public APIs change
 - Track all work through GitHub Issues with appropriate labels
 
-## Agent System Overview (15 agents — internal tooling only, not shipped)
+## Agent System Overview (16 agents — internal tooling only, not shipped)
 - **Control**: team-lead (orchestrator), planner (spec writer)
-- **Intelligence**: issue-hunter, repo-scout, researcher, use-case-scout, contributor-booster
+- **Intelligence**: issue-hunter (external + internal structural scan), repo-scout, researcher, use-case-scout, contributor-booster
 - **Execution**: code-improver, test-writer, test-runner
+- **Quality**: code-quality-agent (lint, type check, format, coverage, compatibility — NEW Sprint 2)
 - **Validation**: security-agent (hard gate), reviewer (hard gate)
 - **Support**: docs-updater, branch-manager (PR-only, never merges to main)
-- **Meta**: agent-architect (proposal-only, read-only)
-- Execution chain: `code-improver → test-writer → test-runner → security-agent → reviewer → docs-updater → branch-manager`
+- **Meta**: agent-architect (proposal-only, read-only — now detects quality blind spots)
+- Execution chain: `code-improver → test-writer → test-runner → code-quality-agent → security-agent → reviewer → docs-updater → branch-manager`
 - Destructive operations (file/function deletion) emit `⚠️ DESTRUCTIVE` tag and halt pipeline for human review
 - `pyproject.toml` auto-grant exception: if test-runner fails with `ModuleNotFoundError`, code-improver may add the missing dependency without human gate
 - Sequence lock: docs-updater always finishes before contributor-booster touches README.md

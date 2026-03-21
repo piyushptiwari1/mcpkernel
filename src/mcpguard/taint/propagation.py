@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
-from mcpguard.taint.tracker import TaintLabel, TaintTracker, TaintedValue
 from mcpguard.taint.sources import detect_tainted_sources
+from mcpguard.taint.tracker import TaintLabel, TaintTracker
 from mcpguard.utils import get_logger
 
 logger = get_logger(__name__)
@@ -72,24 +72,26 @@ class TaintPropagator:
                     out_tv = self._tracker.mark(
                         data=text,
                         label=TaintLabel.LLM_OUTPUT,
-                        metadata={"propagated_from": tool_name, "original_labels": [l.value for l in input_labels]},
+                        metadata={"propagated_from": tool_name, "original_labels": [lbl.value for lbl in input_labels]},
                     )
                     out_tv.labels.update(input_labels)
                     output_labels.update(out_tv.labels)
 
             # Record propagation edge
             prev_tool = self._call_history[-2] if len(self._call_history) >= 2 else "input"
-            self._edges.append(PropagationEdge(
-                from_tool=prev_tool,
-                to_tool=tool_name,
-                labels=input_labels,
-            ))
+            self._edges.append(
+                PropagationEdge(
+                    from_tool=prev_tool,
+                    to_tool=tool_name,
+                    labels=input_labels,
+                )
+            )
 
             logger.info(
                 "taint propagated through tool call",
                 tool=tool_name,
-                input_labels=[l.value for l in input_labels],
-                output_labels=[l.value for l in output_labels],
+                input_labels=[lbl.value for lbl in input_labels],
+                output_labels=[lbl.value for lbl in output_labels],
             )
 
         return output_labels
@@ -107,7 +109,7 @@ class TaintPropagator:
                 {
                     "from": e.from_tool,
                     "to": e.to_tool,
-                    "labels": [l.value for l in e.labels],
+                    "labels": [lbl.value for lbl in e.labels],
                 }
                 for e in self._edges
             ],

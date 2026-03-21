@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Callable, Awaitable
+from typing import TYPE_CHECKING, Any
 
 from mcpguard.dee.envelope import ExecutionTrace, wrap_execution
-from mcpguard.dee.trace_store import TraceStore
 from mcpguard.proxy.interceptor import MCPToolCall
 from mcpguard.utils import ReplayError, get_logger
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from mcpguard.dee.trace_store import TraceStore
 
 logger = get_logger(__name__)
 
@@ -31,7 +35,7 @@ async def replay(
         raise ReplayError(f"Trace not found: {trace_id}")
 
     # Reconstruct the original tool call
-    result_data = json.loads(record["result_json"])
+    json.loads(record["result_json"])
     call = MCPToolCall(
         request_id=f"replay-{trace_id}",
         tool_name=record["tool_name"],

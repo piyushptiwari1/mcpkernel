@@ -6,16 +6,18 @@ import asyncio
 import os
 import time
 from dataclasses import dataclass, field
-from enum import Enum, auto
-from pathlib import Path
-from typing import Any, Callable
+from enum import StrEnum
+from typing import TYPE_CHECKING, Any
 
 from mcpguard.utils import get_logger
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = get_logger(__name__)
 
 
-class SyscallType(str, Enum):
+class SyscallType(StrEnum):
     CONNECT = "connect"
     SENDTO = "sendto"
     OPEN = "open"
@@ -111,6 +113,7 @@ class EBPFProbe:
             return False
         try:
             from bcc import BPF  # noqa: F401
+
             return True
         except ImportError:
             logger.info("BCC not installed — eBPF probes unavailable")

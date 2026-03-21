@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from mcpguard.utils import get_logger
@@ -12,7 +12,7 @@ from mcpguard.utils import get_logger
 logger = get_logger(__name__)
 
 
-class PolicyAction(str, Enum):
+class PolicyAction(StrEnum):
     ALLOW = "allow"
     DENY = "deny"
     AUDIT = "audit"
@@ -211,8 +211,5 @@ class PolicyEngine:
         return {
             "total_rules": len(self._rules),
             "enabled": sum(1 for r in self._rules if r.enabled),
-            "by_action": {
-                action.value: sum(1 for r in self._rules if r.action == action)
-                for action in PolicyAction
-            },
+            "by_action": {action.value: sum(1 for r in self._rules if r.action == action) for action in PolicyAction},
         }

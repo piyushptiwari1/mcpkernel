@@ -5,10 +5,12 @@ from __future__ import annotations
 import hashlib
 import secrets
 import time
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 # ---------------------------------------------------------------------------
@@ -26,7 +28,7 @@ class AuthError(MCPGuardError):
     """Authentication or authorization failure."""
 
 
-class PolicyViolation(MCPGuardError):
+class PolicyViolation(MCPGuardError):  # noqa: N818
     """A policy rule blocked the operation."""
 
     def __init__(self, rule_id: str, message: str, *, details: dict[str, Any] | None = None) -> None:
@@ -39,7 +41,7 @@ class SandboxError(MCPGuardError):
     """Sandbox creation or execution failed."""
 
 
-class TaintViolation(MCPGuardError):
+class TaintViolation(MCPGuardError):  # noqa: N818
     """Tainted data reached a disallowed sink."""
 
     def __init__(self, source_type: str, sink_type: str, *, details: dict[str, Any] | None = None) -> None:
@@ -49,7 +51,7 @@ class TaintViolation(MCPGuardError):
         super().__init__(f"Tainted data ({source_type}) reached sink ({sink_type})")
 
 
-class DriftDetected(MCPGuardError):
+class DriftDetected(MCPGuardError):  # noqa: N818
     """Replay produced different output than original execution."""
 
 
@@ -124,7 +126,7 @@ class Timer:
         self.start: float = 0.0
         self.elapsed: float = 0.0
 
-    def __enter__(self) -> "Timer":
+    def __enter__(self) -> Timer:
         self.start = time.perf_counter()
         return self
 

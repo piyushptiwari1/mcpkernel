@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from mcpguard.taint.tracker import TaintLabel, TaintTracker, TaintedValue
-from mcpguard.taint.sources import SourcePattern, detect_tainted_sources
-from mcpguard.taint.sinks import SinkAction, check_sink_operation, BUILTIN_SINKS
 from mcpguard.taint.propagation import TaintPropagator
-from mcpguard.taint.static_analysis import Severity, static_taint_analysis
 from mcpguard.taint.report import generate_taint_report
+from mcpguard.taint.sinks import SinkAction, check_sink_operation
+from mcpguard.taint.sources import detect_tainted_sources
+from mcpguard.taint.static_analysis import static_taint_analysis
+from mcpguard.taint.tracker import TaintLabel, TaintTracker
 from mcpguard.utils import TaintViolation
 
 

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from mcpguard.audit.logger import AuditEntry, AuditLogger
 from mcpguard.audit.exporter import AuditExportFormat, export_audit_logs
+from mcpguard.audit.logger import AuditEntry, AuditLogger
 
 
 class TestAuditEntry:

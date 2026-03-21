@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from mcpguard.taint.propagation import TaintPropagator
+if TYPE_CHECKING:
+    from mcpguard.taint.propagation import TaintPropagator
 
 
 def generate_taint_report(propagator: TaintPropagator) -> dict[str, Any]:

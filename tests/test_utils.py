@@ -1,7 +1,6 @@
 """Tests for mcpguard.utils — hashing, exceptions, logging."""
 
 import hashlib
-import os
 
 import pytest
 

@@ -7,7 +7,6 @@ Every MCP ``tools/call`` and A2A message flows through this pipeline:
 from __future__ import annotations
 
 import time
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any
@@ -66,7 +65,7 @@ class InterceptorContext:
 # ---------------------------------------------------------------------------
 # Plugin hook interface
 # ---------------------------------------------------------------------------
-class PluginHook(ABC):
+class PluginHook:
     """Base class for interceptor plugin hooks.
 
     Plugins declare a *priority* (higher = runs first) and implement one or
@@ -102,7 +101,7 @@ class InterceptorPipeline:
 
     def unregister(self, name: str) -> None:
         """Remove hook(s) matching *name*."""
-        self._hooks = [h for h in self._hooks if h.NAME != name]
+        self._hooks = [h for h in self._hooks if name != h.NAME]
 
     @property
     def hooks(self) -> list[PluginHook]:

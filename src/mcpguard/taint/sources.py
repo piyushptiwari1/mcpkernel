@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from mcpguard.taint.tracker import TaintLabel
@@ -34,7 +34,10 @@ _BUILTIN_PATTERNS: list[SourcePattern] = [
     SourcePattern(
         name="generic_api_key",
         label=TaintLabel.SECRET,
-        pattern=re.compile(r"(?:api[_-]?key|apikey|secret[_-]?key|access[_-]?token)\s*[:=]\s*['\"]?([a-zA-Z0-9_\-]{20,})", re.IGNORECASE),
+        pattern=re.compile(
+            r"(?:api[_-]?key|apikey|secret[_-]?key|access[_-]?token)\s*[:=]\s*['\"]?([a-zA-Z0-9_\-]{20,})",
+            re.IGNORECASE,
+        ),
         description="Generic API key assignment",
     ),
     SourcePattern(

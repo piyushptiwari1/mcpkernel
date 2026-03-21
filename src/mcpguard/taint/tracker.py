@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from enum import Enum, auto
+from enum import StrEnum
 from typing import Any
 
 from mcpguard.utils import generate_request_id, get_logger
@@ -12,10 +12,10 @@ from mcpguard.utils import generate_request_id, get_logger
 logger = get_logger(__name__)
 
 
-class TaintLabel(str, Enum):
+class TaintLabel(StrEnum):
     """Categories of taint applied to data flowing through MCP calls."""
 
-    SECRET = "secret"
+    SECRET = "secret"  # noqa: S105
     PII = "pii"
     LLM_OUTPUT = "llm_output"
     USER_INPUT = "user_input"

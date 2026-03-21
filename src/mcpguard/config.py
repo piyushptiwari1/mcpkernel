@@ -5,7 +5,7 @@ Load order (last wins): defaults → YAML file → environment variables → CLI
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -17,27 +17,27 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
-class SandboxBackend(str, Enum):
+class SandboxBackend(StrEnum):
     DOCKER = "docker"
     FIRECRACKER = "firecracker"
     WASM = "wasm"
     MICROSANDBOX = "microsandbox"
 
 
-class TaintMode(str, Enum):
+class TaintMode(StrEnum):
     FULL = "full"
     LIGHT = "light"
     OFF = "off"
 
 
-class LogLevel(str, Enum):
+class LogLevel(StrEnum):
     DEBUG = "DEBUG"
     INFO = "INFO"
     WARNING = "WARNING"
     ERROR = "ERROR"
 
 
-class PruningStrategy(str, Enum):
+class PruningStrategy(StrEnum):
     AGGRESSIVE = "aggressive"
     MODERATE = "moderate"
     CONSERVATIVE = "conservative"
@@ -126,9 +126,7 @@ class EBPFConfig(BaseModel):
 
     enabled: bool = False
     redirect_ports: list[int] = Field(default_factory=lambda: [8080])
-    monitored_syscalls: list[str] = Field(
-        default_factory=lambda: ["connect", "sendto", "open", "write", "execve"]
-    )
+    monitored_syscalls: list[str] = Field(default_factory=lambda: ["connect", "sendto", "open", "write", "execve"])
 
 
 class PolicyConfig(BaseModel):
@@ -256,7 +254,7 @@ def load_config(
     overrides:
         Dict of programmatic overrides (e.g. from CLI).
     """
-    global _settings  # noqa: PLW0603
+    global _settings
     kwargs: dict[str, Any] = {}
     if config_path is not None:
         kwargs["config_path"] = config_path
@@ -268,7 +266,7 @@ def load_config(
 
 def get_config() -> MCPGuardSettings:
     """Return the current settings singleton, loading defaults if needed."""
-    global _settings  # noqa: PLW0603
+    global _settings
     if _settings is None:
         _settings = MCPGuardSettings()
     return _settings

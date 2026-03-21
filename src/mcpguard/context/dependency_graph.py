@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import ast
-import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -79,20 +78,14 @@ def build_dependency_graph(code: str) -> DependencyGraph:
             for target in node.targets:
                 if isinstance(target, ast.Name):
                     graph.add_node(target.id, "variable")
-        elif isinstance(node, ast.Import):
-            for alias in node.names:
-                name = alias.asname or alias.name
-                graph.add_node(name, "import")
-        elif isinstance(node, ast.ImportFrom):
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
             for alias in node.names:
                 name = alias.asname or alias.name
                 graph.add_node(name, "import")
 
     # Second pass: collect references
     for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
-            _collect_references(node, node.name, graph)
-        elif isinstance(node, ast.ClassDef):
+        if isinstance(node, (ast.FunctionDef | ast.AsyncFunctionDef, ast.ClassDef)):
             _collect_references(node, node.name, graph)
 
     return graph

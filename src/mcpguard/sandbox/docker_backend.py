@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import json
+import contextlib
 import time
 from typing import Any
 
@@ -66,7 +66,7 @@ class DockerSandbox(SandboxBackend):
                     mem_limit=mem_limit,
                     network_mode=network_mode,
                     read_only=True,
-                    tmpfs={"/tmp": f"size={limits.disk_mb}m"},
+                    tmpfs={"/tmp": f"size={limits.disk_mb}m"},  # noqa: S108
                     remove=False,
                     detach=True,
                     stdout=True,
@@ -81,16 +81,12 @@ class DockerSandbox(SandboxBackend):
                 stderr = container.logs(stdout=False, stderr=True).decode(errors="replace")
                 exit_code = exit_info.get("StatusCode", -1)
             except Exception as exc:
-                try:
+                with contextlib.suppress(Exception):
                     container.kill()
-                except Exception:
-                    pass
                 raise SandboxError(f"Container execution failed: {exc}") from exc
             finally:
-                try:
+                with contextlib.suppress(Exception):
                     container.remove(force=True)
-                except Exception:
-                    pass
 
             elapsed = time.monotonic() - start
             is_error = exit_code != 0

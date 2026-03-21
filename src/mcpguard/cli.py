@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import json
-import sys
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 
@@ -25,7 +23,7 @@ app = typer.Typer(
 def serve(
     host: Annotated[str, typer.Option(help="Bind address")] = "127.0.0.1",
     port: Annotated[int, typer.Option(help="Bind port")] = 8000,
-    config: Annotated[Optional[Path], typer.Option("--config", "-c", help="Config YAML path")] = None,
+    config: Annotated[Path | None, typer.Option("--config", "-c", help="Config YAML path")] = None,
     log_level: Annotated[str, typer.Option(help="Log level")] = "info",
 ) -> None:
     """Start the MCPGuard proxy gateway."""
@@ -47,19 +45,16 @@ def validate_policy(
     path: Annotated[Path, typer.Argument(help="Policy YAML file or directory")],
 ) -> None:
     """Validate policy YAML files."""
-    from mcpguard.policy.loader import load_policy_file, load_policy_dir
+    from mcpguard.policy.loader import load_policy_dir, load_policy_file
 
     try:
-        if path.is_dir():
-            rules = load_policy_dir(path)
-        else:
-            rules = load_policy_file(path)
+        rules = load_policy_dir(path) if path.is_dir() else load_policy_file(path)
         typer.echo(f"✓ Loaded {len(rules)} valid rules from {path}")
         for rule in rules:
             typer.echo(f"  [{rule.id}] {rule.name} → {rule.action.value}")
     except Exception as exc:
         typer.echo(f"✗ Validation failed: {exc}", err=True)
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from exc
 
 
 # ── DEE / Trace ────────────────────────────────────────────────────────
@@ -116,8 +111,9 @@ def replay(
     db: Annotated[str, typer.Option(help="Trace DB path")] = "mcpguard_traces.db",
 ) -> None:
     """Replay a trace and check for drift."""
+    from mcpguard.dee.replay import replay as replay_trace
+    from mcpguard.dee.replay import validate_replay_integrity
     from mcpguard.dee.trace_store import TraceStore
-    from mcpguard.dee.replay import replay as replay_trace, validate_replay_integrity
 
     async def _run() -> None:
         store = TraceStore(db_path=db)
@@ -149,14 +145,14 @@ def replay(
 @app.command()
 def audit_query(
     db: Annotated[str, typer.Option(help="Audit DB path")] = "mcpguard_audit.db",
-    event_type: Annotated[Optional[str], typer.Option(help="Filter by event type")] = None,
-    tool_name: Annotated[Optional[str], typer.Option(help="Filter by tool name")] = None,
+    event_type: Annotated[str | None, typer.Option(help="Filter by event type")] = None,
+    tool_name: Annotated[str | None, typer.Option(help="Filter by tool name")] = None,
     limit: Annotated[int, typer.Option(help="Max entries")] = 20,
     export_format: Annotated[str, typer.Option(help="Export format: jsonl, csv, cef")] = "jsonl",
 ) -> None:
     """Query audit logs."""
+    from mcpguard.audit.exporter import AuditExportFormat, export_audit_logs
     from mcpguard.audit.logger import AuditLogger
-    from mcpguard.audit.exporter import export_audit_logs, AuditExportFormat
 
     async def _run() -> None:
         logger = AuditLogger(db_path=db)
@@ -204,7 +200,7 @@ def scan(
     path: Annotated[Path, typer.Argument(help="Python file to static-analyze")],
 ) -> None:
     """Static taint analysis on a Python file."""
-    from mcpguard.taint.static_analysis import static_taint_analysis, Severity
+    from mcpguard.taint.static_analysis import Severity, static_taint_analysis
 
     if not path.exists():
         typer.echo(f"File not found: {path}", err=True)
@@ -235,7 +231,7 @@ def version() -> None:
 
 @app.command()
 def config_show(
-    config: Annotated[Optional[Path], typer.Option("--config", "-c", help="Config YAML path")] = None,
+    config: Annotated[Path | None, typer.Option("--config", "-c", help="Config YAML path")] = None,
 ) -> None:
     """Show effective configuration."""
     from mcpguard.config import load_config

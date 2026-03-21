@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import asyncio
-import os
-import tempfile
-from pathlib import Path
-from typing import AsyncGenerator, Generator
+from typing import TYPE_CHECKING
 
 import pytest
 import pytest_asyncio
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture(scope="session")

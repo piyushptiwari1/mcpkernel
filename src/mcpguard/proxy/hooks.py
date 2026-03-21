@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from mcpguard.proxy.interceptor import InterceptorContext, PluginHook
@@ -31,9 +30,7 @@ class PolicyHook(PluginHook):
 
         if not decision.allowed:
             ctx.aborted = True
-            ctx.abort_reason = (
-                f"Policy denied: {', '.join(decision.reasons)}"
-            )
+            ctx.abort_reason = f"Policy denied: {', '.join(decision.reasons)}"
             logger.warning(
                 "policy hook blocked call",
                 tool=ctx.call.tool_name,
@@ -138,7 +135,7 @@ class DEEHook(PluginHook):
             trace = await wrap_execution(
                 ctx.call,
                 _passthrough_execute,
-                agent_id=ctx.extra.get("auth", None) and ctx.extra["auth"].identity or "unknown",
+                agent_id=(ctx.extra.get("auth", None) and ctx.extra["auth"].identity) or "unknown",
                 sign=False,
             )
             ctx.result.trace_id = trace.trace_id

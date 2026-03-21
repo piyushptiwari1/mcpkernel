@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import pytest
-
 from prometheus_client import CollectorRegistry
 
+from mcpguard.observability.health import ComponentHealth, HealthCheck, HealthStatus
 from mcpguard.observability.metrics import MetricsCollector
-from mcpguard.observability.health import HealthCheck, HealthStatus, ComponentHealth
 from mcpguard.observability.tracing import TracingSetup, setup_tracing
 
 

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from mcpguard.utils import hash_directory, sha256_hex, sha256_json
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def take_environment_snapshot(
@@ -39,11 +42,13 @@ def take_environment_snapshot(
     return sha256_hex(combined.encode())
 
 
-_TRACKED_ENV_VARS = frozenset({
-    "PATH",
-    "PYTHONPATH",
-    "LANG",
-    "LC_ALL",
-    "HOME",
-    "USER",
-})
+_TRACKED_ENV_VARS = frozenset(
+    {
+        "PATH",
+        "PYTHONPATH",
+        "LANG",
+        "LC_ALL",
+        "HOME",
+        "USER",
+    }
+)

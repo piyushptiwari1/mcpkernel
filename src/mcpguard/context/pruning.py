@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from mcpguard.context.reducer import ContextReducer, ReductionResult
@@ -11,7 +11,7 @@ from mcpguard.utils import get_logger
 logger = get_logger(__name__)
 
 
-class PruningStrategy(str, Enum):
+class PruningStrategy(StrEnum):
     """Aggressiveness level for context pruning."""
 
     AGGRESSIVE = "aggressive"

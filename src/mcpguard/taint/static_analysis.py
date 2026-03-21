@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import ast
 from dataclasses import dataclass, field
-from enum import Enum, auto
-from typing import Any
+from enum import StrEnum
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -78,14 +77,16 @@ class _DangerousPatternVisitor(ast.NodeVisitor):
 
         if func_name in _DANGEROUS_CALLS:
             rule_id, severity, msg = _DANGEROUS_CALLS[func_name]
-            self.findings.append(StaticFinding(
-                rule_id=rule_id,
-                severity=severity,
-                message=msg,
-                line=node.lineno,
-                col=node.col_offset,
-                node_type="Call",
-            ))
+            self.findings.append(
+                StaticFinding(
+                    rule_id=rule_id,
+                    severity=severity,
+                    message=msg,
+                    line=node.lineno,
+                    col=node.col_offset,
+                    node_type="Call",
+                )
+            )
 
         self.generic_visit(node)
 
@@ -102,14 +103,16 @@ class _DangerousPatternVisitor(ast.NodeVisitor):
     def _check_module(self, module: str, line: int, col: int) -> None:
         for pattern, (rule_id, severity, msg) in _DANGEROUS_MODULES.items():
             if module == pattern or module.startswith(f"{pattern}."):
-                self.findings.append(StaticFinding(
-                    rule_id=rule_id,
-                    severity=severity,
-                    message=msg,
-                    line=line,
-                    col=col,
-                    node_type="Import",
-                ))
+                self.findings.append(
+                    StaticFinding(
+                        rule_id=rule_id,
+                        severity=severity,
+                        message=msg,
+                        line=line,
+                        col=col,
+                        node_type="Import",
+                    )
+                )
 
 
 def static_taint_analysis(code: str) -> StaticTaintReport:
@@ -122,14 +125,16 @@ def static_taint_analysis(code: str) -> StaticTaintReport:
         tree = ast.parse(code)
     except SyntaxError:
         return StaticTaintReport(
-            findings=[StaticFinding(
-                rule_id="STATIC-000",
-                severity=Severity.INFO,
-                message="Code contains syntax errors — cannot analyze",
-                line=0,
-                col=0,
-                node_type="SyntaxError",
-            )],
+            findings=[
+                StaticFinding(
+                    rule_id="STATIC-000",
+                    severity=Severity.INFO,
+                    message="Code contains syntax errors — cannot analyze",
+                    line=0,
+                    col=0,
+                    node_type="SyntaxError",
+                )
+            ],
             lines_scanned=0,
         )
 

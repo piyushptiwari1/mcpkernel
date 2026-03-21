@@ -1,7 +1,7 @@
 """Audit logging — append-only, Sigstore-signed audit trail."""
 
-from mcpguard.audit.logger import AuditLogger, AuditEntry
-from mcpguard.audit.exporter import export_audit_logs, AuditExportFormat
+from mcpguard.audit.exporter import AuditExportFormat, export_audit_logs
+from mcpguard.audit.logger import AuditEntry, AuditLogger
 
 __all__ = [
     "AuditEntry",

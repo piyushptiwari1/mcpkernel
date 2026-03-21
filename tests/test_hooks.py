@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from mcpguard.policy.engine import PolicyAction, PolicyEngine, PolicyRule
-from mcpguard.proxy.hooks import AuditHook, DEEHook, PolicyHook, TaintHook
+from mcpguard.proxy.hooks import PolicyHook, TaintHook
 from mcpguard.proxy.interceptor import (
     ExecutionResult,
     InterceptorContext,
@@ -41,12 +41,14 @@ class TestPolicyHook:
     @pytest.mark.asyncio
     async def test_denies_matching_rule(self):
         engine = PolicyEngine()
-        engine.add_rule(PolicyRule(
-            id="block-shell",
-            name="Block shell",
-            action=PolicyAction.DENY,
-            tool_patterns=["shell_.*"],
-        ))
+        engine.add_rule(
+            PolicyRule(
+                id="block-shell",
+                name="Block shell",
+                action=PolicyAction.DENY,
+                tool_patterns=["shell_.*"],
+            )
+        )
         hook = PolicyHook(engine)
         ctx = _make_ctx(tool_name="shell_exec")
         await hook.pre_execution(ctx)

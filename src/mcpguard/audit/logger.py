@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import time
 from dataclasses import asdict, dataclass, field
-from pathlib import Path
 from typing import Any
 
 import aiosqlite
@@ -72,12 +71,8 @@ class AuditLogger:
                 content_hash TEXT NOT NULL
             )
         """)
-        await self._db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp)"
-        )
-        await self._db.execute(
-            "CREATE INDEX IF NOT EXISTS idx_audit_tool ON audit_log(tool_name)"
-        )
+        await self._db.execute("CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp)")
+        await self._db.execute("CREATE INDEX IF NOT EXISTS idx_audit_tool ON audit_log(tool_name)")
         await self._db.commit()
         logger.info("audit logger initialized", db=self._db_path)
 
@@ -141,26 +136,28 @@ class AuditLogger:
         params.append(limit)
 
         cursor = await self._db.execute(
-            f"SELECT * FROM audit_log WHERE {where} ORDER BY timestamp DESC LIMIT ?",
+            f"SELECT * FROM audit_log WHERE {where} ORDER BY timestamp DESC LIMIT ?",  # noqa: S608
             params,
         )
         rows = await cursor.fetchall()
 
         entries = []
         for row in rows:
-            entries.append(AuditEntry(
-                entry_id=row[0],
-                timestamp=row[1],
-                event_type=row[2],
-                tool_name=row[3],
-                agent_id=row[4],
-                request_id=row[5],
-                trace_id=row[6],
-                action=row[7],
-                outcome=row[8],
-                details=json.loads(row[9]) if row[9] else {},
-                content_hash=row[10],
-            ))
+            entries.append(
+                AuditEntry(
+                    entry_id=row[0],
+                    timestamp=row[1],
+                    event_type=row[2],
+                    tool_name=row[3],
+                    agent_id=row[4],
+                    request_id=row[5],
+                    trace_id=row[6],
+                    action=row[7],
+                    outcome=row[8],
+                    details=json.loads(row[9]) if row[9] else {},
+                    content_hash=row[10],
+                )
+            )
         return entries
 
     async def verify_integrity(self) -> dict[str, Any]:

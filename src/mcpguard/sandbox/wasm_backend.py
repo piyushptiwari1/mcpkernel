@@ -30,16 +30,14 @@ class WASMSandbox(SandboxBackend):
     ) -> ExecutionResult:
         import asyncio
 
-        limits = resource_limits or ResourceLimits(
-            timeout_seconds=timeout or self._config.default_timeout_seconds
-        )
+        limits = resource_limits or ResourceLimits(timeout_seconds=timeout or self._config.default_timeout_seconds)
         start = time.monotonic()
 
         def _run_wasm() -> ExecutionResult:
             try:
                 import wasmtime  # type: ignore[import-untyped]
-            except ImportError:
-                raise SandboxError("wasmtime not installed — run: pip install 'mcpguard[wasm]'")
+            except ImportError as exc:
+                raise SandboxError("wasmtime not installed — run: pip install 'mcpguard[wasm]'") from exc
 
             engine = wasmtime.Engine()
             store = wasmtime.Store(engine)
@@ -60,10 +58,22 @@ class WASMSandbox(SandboxBackend):
     async def create_workspace(self, *, persistent: bool = False) -> Workspace:
         return Workspace(workspace_id=generate_request_id(), persistent=persistent)
 
-    async def set_network_policy(self, workspace: Workspace, *, allow_egress: bool = False, allowed_domains: list[str] | None = None) -> None:
+    async def set_network_policy(
+        self,
+        workspace: Workspace,
+        *,
+        allow_egress: bool = False,
+        allowed_domains: list[str] | None = None,
+    ) -> None:
         pass  # WASM is network-isolated by default
 
-    async def mount_filesystem(self, workspace: Workspace, *, read_only_paths: list[str] | None = None, temp_dirs: list[str] | None = None) -> None:
+    async def mount_filesystem(
+        self,
+        workspace: Workspace,
+        *,
+        read_only_paths: list[str] | None = None,
+        temp_dirs: list[str] | None = None,
+    ) -> None:
         pass  # WASM has no filesystem access by default
 
     async def get_metrics(self, workspace: Workspace) -> SandboxMetrics:
@@ -73,7 +83,11 @@ class WASMSandbox(SandboxBackend):
         pass
 
     async def snapshot(self, workspace: Workspace) -> SnapshotInfo:
-        return SnapshotInfo(snapshot_id=generate_request_id(), workspace_id=workspace.workspace_id, created_at=time.time())
+        return SnapshotInfo(
+            snapshot_id=generate_request_id(),
+            workspace_id=workspace.workspace_id,
+            created_at=time.time(),
+        )
 
     async def restore(self, snapshot: SnapshotInfo) -> Workspace:
         return Workspace(workspace_id=snapshot.workspace_id)

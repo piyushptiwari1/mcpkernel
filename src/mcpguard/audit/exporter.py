@@ -5,15 +5,16 @@ from __future__ import annotations
 import csv
 import io
 import json
-from enum import Enum
-from typing import Any
+from enum import StrEnum
+from typing import TYPE_CHECKING
 
-from mcpguard.audit.logger import AuditEntry
+if TYPE_CHECKING:
+    from mcpguard.audit.logger import AuditEntry
 
 __all__ = ["AuditExportFormat", "export_audit_logs"]
 
 
-class AuditExportFormat(str, Enum):
+class AuditExportFormat(StrEnum):
     JSON_LINES = "jsonl"
     CSV = "csv"
     SIEM_CEF = "cef"  # Common Event Format
@@ -36,41 +37,54 @@ def export_audit_logs(
 def _export_jsonl(entries: list[AuditEntry]) -> str:
     lines = []
     for e in entries:
-        lines.append(json.dumps({
-            "entry_id": e.entry_id,
-            "timestamp": e.timestamp,
-            "event_type": e.event_type,
-            "tool_name": e.tool_name,
-            "agent_id": e.agent_id,
-            "request_id": e.request_id,
-            "trace_id": e.trace_id,
-            "action": e.action,
-            "outcome": e.outcome,
-            "details": e.details,
-            "content_hash": e.content_hash,
-        }, default=str))
+        lines.append(
+            json.dumps(
+                {
+                    "entry_id": e.entry_id,
+                    "timestamp": e.timestamp,
+                    "event_type": e.event_type,
+                    "tool_name": e.tool_name,
+                    "agent_id": e.agent_id,
+                    "request_id": e.request_id,
+                    "trace_id": e.trace_id,
+                    "action": e.action,
+                    "outcome": e.outcome,
+                    "details": e.details,
+                    "content_hash": e.content_hash,
+                },
+                default=str,
+            )
+        )
     return "\n".join(lines)
 
 
 def _export_csv(entries: list[AuditEntry]) -> str:
     output = io.StringIO()
     fieldnames = [
-        "entry_id", "timestamp", "event_type", "tool_name",
-        "agent_id", "action", "outcome", "content_hash",
+        "entry_id",
+        "timestamp",
+        "event_type",
+        "tool_name",
+        "agent_id",
+        "action",
+        "outcome",
+        "content_hash",
     ]
     writer = csv.DictWriter(output, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
     writer.writeheader()
     for e in entries:
-        writer.writerow({
-            "entry_id": e.entry_id,
-            "timestamp": e.timestamp,
-            "event_type": e.event_type,
-            "tool_name": e.tool_name,
-            "agent_id": e.agent_id,
-            "action": e.action,
-            "outcome": e.outcome,
-            "content_hash": e.content_hash,
-        })
+        writer.writerow(
+            {
+                "entry_id": e.entry_id,
+                "timestamp": e.timestamp,
+                "event_type": e.event_type,
+                "tool_name": e.tool_name,
+                "agent_id": e.agent_id,
+                "action": e.action,
+                "outcome": e.outcome,
+                "content_hash": e.content_hash,
+            }
+        )
     return output.getvalue().rstrip("\r\n")
 
 

@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum, auto
-from typing import Any
+from enum import StrEnum
 
-from mcpguard.taint.tracker import TaintLabel, TaintedValue
+from mcpguard.taint.tracker import TaintedValue, TaintLabel
 from mcpguard.utils import TaintViolation, get_logger
 
 logger = get_logger(__name__)
 
 
-class SinkAction(str, Enum):
+class SinkAction(StrEnum):
     """Action to take when tainted data reaches a sink."""
 
     BLOCK = "block"
@@ -92,18 +91,18 @@ def check_sink_operation(
             logger.warning(
                 "taint sink violation",
                 sink=sink_type,
-                labels=[l.value for l in violating_labels],
+                labels=[lbl.value for lbl in violating_labels],
                 source_id=tv.source_id,
                 action=action.value,
             )
             if action == SinkAction.BLOCK:
                 raise TaintViolation(
-                    source_type=", ".join(l.value for l in violating_labels),
+                    source_type=", ".join(lbl.value for lbl in violating_labels),
                     sink_type=sink_type,
                     details={
                         "source_id": tv.source_id,
                         "sink_definition": sink_def.name,
-                        "blocked_labels": [l.value for l in violating_labels],
+                        "blocked_labels": [lbl.value for lbl in violating_labels],
                     },
                 )
             return action

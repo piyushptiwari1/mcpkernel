@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Callable, Awaitable
+from enum import StrEnum
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 
-class HealthStatus(str, Enum):
+class HealthStatus(StrEnum):
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
@@ -44,11 +47,13 @@ class HealthCheck:
                 result = await check_fn()
                 components.append(result)
             except Exception as exc:
-                components.append(ComponentHealth(
-                    name=name,
-                    status=HealthStatus.UNHEALTHY,
-                    details={"error": str(exc)},
-                ))
+                components.append(
+                    ComponentHealth(
+                        name=name,
+                        status=HealthStatus.UNHEALTHY,
+                        details={"error": str(exc)},
+                    )
+                )
 
         # Overall status: worst component wins
         if any(c.status == HealthStatus.UNHEALTHY for c in components):

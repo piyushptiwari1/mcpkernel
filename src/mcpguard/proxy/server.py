@@ -8,6 +8,7 @@ Exposes:
 
 from __future__ import annotations
 
+import contextlib
 import json
 from contextlib import asynccontextmanager
 from typing import Any
@@ -50,7 +51,7 @@ def get_pipeline() -> InterceptorPipeline:
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def _lifespan(app: FastAPI):  # type: ignore[type-arg]
-    global _rate_limiter, _auth_backend, _settings, _execute_fn  # noqa: PLW0603
+    global _rate_limiter, _auth_backend, _settings, _execute_fn
     _settings = get_config()
 
     # Wire auth backend
@@ -70,10 +71,9 @@ async def _lifespan(app: FastAPI):  # type: ignore[type-arg]
     _execute_fn = backend.execute_code
 
     # --- Wire interceptor pipeline hooks ---
-    from mcpguard.proxy.hooks import AuditHook, DEEHook, PolicyHook, TaintHook
-
     # Policy engine
     from mcpguard.policy import PolicyAction, PolicyEngine, load_policy_file
+    from mcpguard.proxy.hooks import AuditHook, DEEHook, PolicyHook, TaintHook
 
     policy_engine = PolicyEngine(
         default_action=PolicyAction(_settings.policy.default_action),
@@ -169,9 +169,7 @@ def create_proxy_app(settings: MCPGuardSettings | None = None) -> FastAPI:
         try:
             raw = json.loads(body)
         except json.JSONDecodeError:
-            return JSONResponse(
-                build_jsonrpc_error(0, -32700, "Parse error"), status_code=400
-            )
+            return JSONResponse(build_jsonrpc_error(0, -32700, "Parse error"), status_code=400)
 
         # Normalize non-MCP requests
         raw = normalize_to_mcp(raw)
@@ -179,7 +177,10 @@ def create_proxy_app(settings: MCPGuardSettings | None = None) -> FastAPI:
         # --- Auth ---
         if _auth_backend is not None:
             try:
-                headers = {k.decode() if isinstance(k, bytes) else k: v.decode() if isinstance(v, bytes) else v for k, v in request.headers.items()}
+                headers = {
+                    k.decode() if isinstance(k, bytes) else k: v.decode() if isinstance(v, bytes) else v
+                    for k, v in request.headers.items()
+                }
                 creds: AuthCredentials = await _auth_backend.authenticate(headers)
             except AuthError as exc:
                 return JSONResponse(
@@ -236,10 +237,8 @@ def create_proxy_app(settings: MCPGuardSettings | None = None) -> FastAPI:
         await _pipeline.run_post_execution(ctx)
 
         # Log hooks (fire-and-forget)
-        try:
+        with contextlib.suppress(Exception):
             await _pipeline.run_log(ctx)
-        except Exception:
-            pass  # log hooks are best-effort
 
         return JSONResponse(build_jsonrpc_response(tool_call.request_id, exec_result))
 
