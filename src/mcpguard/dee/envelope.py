@@ -114,7 +114,7 @@ async def _sign_trace(
     try:
         from sigstore.sign import SigningContext
 
-        ctx = SigningContext.production()  # type: ignore[attr-defined]
+        ctx = SigningContext.production()
         with ctx.signer() as signer:
             result = signer.sign_artifact(payload.encode())
             # Serialize bundle to JSON string
