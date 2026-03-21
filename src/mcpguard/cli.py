@@ -73,16 +73,16 @@ def trace_list(
 
     async def _run() -> None:
         store = TraceStore(db_path=db)
-        await store.initialize()
+        await store.open()
         traces = await store.list_traces(limit=limit)
         if not traces:
             typer.echo("No traces found.")
             return
         for t in traces:
             typer.echo(
-                f"  {t.trace_id[:12]}… | {t.tool_name:20s} | "
-                f"in={t.input_hash[:8]}… out={t.output_hash[:8]}… | "
-                f"{t.duration_seconds:.3f}s"
+                f"  {t['trace_id'][:12]}… | {t['tool_name']:20s} | "
+                f"in={t['input_hash'][:8]}… out={t['output_hash'][:8]}… | "
+                f"{t['duration_seconds']:.3f}s"
             )
         await store.close()
 
@@ -99,12 +99,12 @@ def trace_export(
 
     async def _run() -> None:
         store = TraceStore(db_path=db)
-        await store.initialize()
+        await store.open()
         data = await store.export_trace(trace_id)
         if data is None:
             typer.echo(f"Trace {trace_id} not found", err=True)
             raise typer.Exit(code=1)
-        typer.echo(json.dumps(data, indent=2, default=str))
+        typer.echo(data)
         await store.close()
 
     asyncio.run(_run())
@@ -121,7 +121,7 @@ def replay(
 
     async def _run() -> None:
         store = TraceStore(db_path=db)
-        await store.initialize()
+        await store.open()
         original = await store.get(trace_id)
         if original is None:
             typer.echo(f"Trace {trace_id} not found", err=True)
@@ -133,12 +133,12 @@ def replay(
 
         settings = load_config()
         backend = create_backend(settings.sandbox)
-        new_trace = await replay_trace(original, backend)
-        match = validate_replay_integrity(original, new_trace)
+        new_trace = await replay_trace(trace_id, store, backend.execute_code)
+        match = await validate_replay_integrity(trace_id, new_trace, store)
 
         status = "✓ MATCH" if match else "✗ DRIFT DETECTED"
         typer.echo(f"{status}")
-        typer.echo(f"  Original output hash: {original.output_hash}")
+        typer.echo(f"  Original output hash: {original['output_hash']}")
         typer.echo(f"  Replay output hash:   {new_trace.output_hash}")
         await store.close()
 
