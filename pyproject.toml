@@ -1,0 +1,158 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mcpguard"
+version = "0.1.0"
+description = "The mandatory, deterministic MCP/A2A gateway that turns every agent tool call into a provably replayable, taint-safe, policy-enforced execution."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [
+    { name = "Piyush Tiwari", email = "piyushptiwari1@users.noreply.github.com" },
+]
+keywords = [
+    "mcp",
+    "a2a",
+    "agent",
+    "security",
+    "sandbox",
+    "gateway",
+    "taint-tracking",
+    "deterministic-execution",
+    "policy-enforcement",
+    "owasp",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+dependencies = [
+    "mcp>=1.0",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "typer[all]>=0.12",
+    "anyio>=4.4",
+    "httpx>=0.27",
+    "structlog>=24.1",
+    "pyyaml>=6.0",
+    "sigstore>=3.0",
+    "opentelemetry-api>=1.25",
+    "opentelemetry-sdk>=1.25",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.25",
+    "opentelemetry-exporter-prometheus>=0.46b0",
+    "opentelemetry-instrumentation-fastapi>=0.46b0",
+    "prometheus-client>=0.20",
+    "aiosqlite>=0.20",
+    "cryptography>=42.0",
+]
+
+[project.optional-dependencies]
+docker = ["docker>=7.0"]
+firecracker = ["aiofiles>=23.2"]
+wasm = ["wasmtime>=19.0"]
+ebpf = ["bcc>=0.30"]
+all = [
+    "mcpguard[docker,firecracker,wasm,ebpf]",
+]
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+    "hypothesis>=6.100",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "pre-commit>=3.7",
+    "types-pyyaml>=6.0",
+    "types-aiofiles>=23.2",
+    "respx>=0.21",
+]
+docs = [
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.25",
+]
+
+[project.urls]
+Homepage = "https://github.com/piyushptiwari1/mcpguard"
+Documentation = "https://github.com/piyushptiwari1/mcpguard/tree/main/docs"
+Repository = "https://github.com/piyushptiwari1/mcpguard"
+Issues = "https://github.com/piyushptiwari1/mcpguard/issues"
+Changelog = "https://github.com/piyushptiwari1/mcpguard/blob/main/CHANGELOG.md"
+
+[project.scripts]
+mcpguard = "mcpguard.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcpguard"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "S",    # flake8-bandit (security)
+    "T20",  # flake8-print
+    "SIM",  # flake8-simplify
+    "TCH",  # flake8-type-checking
+    "RUF",  # ruff-specific
+]
+ignore = ["S101", "S603", "S607"]  # allow assert in tests, subprocess
+
+[tool.ruff.lint.isort]
+known-first-party = ["mcpguard"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["docker.*", "bcc.*", "wasmtime.*", "sigstore.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "ebpf: requires eBPF/root (deselect with '-m \"not ebpf\"')",
+    "docker: requires Docker daemon (deselect with '-m \"not docker\"')",
+    "firecracker: requires Firecracker (deselect with '-m \"not firecracker\"')",
+]
+
+[tool.coverage.run]
+source = ["mcpguard"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.",
+    "@overload",
+    "raise NotImplementedError",
+]

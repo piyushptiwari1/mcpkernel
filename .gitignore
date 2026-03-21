@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# Type checking
+.mypy_cache/
+
+# Ruff
+.ruff_cache/
+
+# Build
+*.whl
+
+# Runtime
+dee_store/*.db
+dee_store/*.db-wal
+dee_store/*.db-shm
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker/firecracker/*.img
+docker/firecracker/*.rootfs
+
+# eBPF
+*.o
+src/mcpguard/ebpf/programs/*.o
+
+# Autonomous Agent Team (local-only, not part of the codebase)
+# These are VS Code / GitHub Copilot agent definitions for the autonomous dev team
+.github/agents/
+.agent-workspace/
+.github/prompts/dev-sprint.prompt.md
+.github/prompts/issue-triage.prompt.md
+.github/prompts/release-validation.prompt.md
+.github/prompts/research-improvements.prompt.md
+.github/prompts/repo-scout.prompt.md
+.github/prompts/write-tests.prompt.md
+.github/prompts/use-case-research.prompt.md
+.github/prompts/agent-audit.prompt.md

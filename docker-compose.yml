@@ -1,0 +1,29 @@
+services:
+  mcpguard:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./policies:/app/policies:ro
+      - mcpguard-data:/app/data
+    environment:
+      - MCPGUARD_PROXY__HOST=0.0.0.0
+      - MCPGUARD_PROXY__PORT=8000
+      - MCPGUARD_SANDBOX__BACKEND=docker
+      - MCPGUARD_OBSERVABILITY__LOG_LEVEL=info
+    restart: unless-stopped
+    # Docker-in-Docker for sandbox backend
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - mcpguard
+
+volumes:
+  mcpguard-data:

@@ -1,0 +1,77 @@
+# MCPGuard — Project Context for All Agents
+
+## Project Overview
+MCPGuard is an open-source **Execution Sovereignty Stack** — a mandatory, deterministic MCP/A2A gateway that makes every agent tool call provably replayable, taint-safe, and policy-enforced. Licensed under Apache 2.0.
+
+**Repository**: `piyushptiwari1/mcpguard`
+
+## Architecture
+- **10 packages** in `src/mcpguard/`: proxy, sandbox, dee, taint, context, ebpf, policy, audit, observability, cli
+- **Proxy**: AsyncIO MCP/A2A transparent gateway with SSE/stdio transport
+- **Policy**: YAML-based rules engine with OWASP ASI 2026 mappings
+- **Taint**: Multi-mode taint tracking (FULL/LIGHT/OFF) for secrets, PII, user input
+- **Sandbox**: Docker, Firecracker, WASM, Microsandbox backends
+- **DEE**: Deterministic Execution Envelopes — hashed, Sigstore-signed, replayable
+- **Audit**: Tamper-proof append-only logs with SIEM export (CEF, JSONL, CSV)
+- **Context**: Environment snapshots and drift detection
+- **Observability**: OpenTelemetry metrics and Prometheus export
+- **eBPF**: Kernel-level syscall filtering
+
+## Code Standards
+- Python 3.10+ (compatible with 3.10 through 3.12)
+- Async-first using `asyncio`
+- Type hints on all public APIs
+- Tests in `tests/` using `pytest` with async support
+- All 106 tests must pass before merging to main
+
+## Build & Test
+```bash
+# Install
+pip install -e ".[dev]"
+
+# Run all tests
+python -m pytest tests/ -v --tb=short
+
+# Run specific test module
+python -m pytest tests/test_proxy.py -v
+
+# Lint
+ruff check src/ tests/
+```
+
+## Git Workflow
+- `main` branch: stable, all tests passing
+- `development` branch: active work, may have failing tests
+- Feature branches: `feature/<description>` off development
+- Bug fix branches: `fix/<description>` off development
+- Always run tests before merging to main
+- Use conventional commits: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`
+
+## Key Files
+- `README.md` — Project overview and quick start
+- `docs/USAGE.md` — Detailed usage guide
+- `CHANGELOG.md` — Version history
+- `CONTRIBUTING.md` — Contribution guidelines
+- `pyproject.toml` — Project metadata and dependencies
+- `policies/` — Example YAML policy files
+
+## Agent Team Guidelines
+- When making changes, always run `python -m pytest tests/ -v --tb=short` to validate
+- When fixing issues, create a test that reproduces the bug first
+- When adding features, add corresponding tests
+- Update `README.md` and `docs/USAGE.md` when public APIs change
+- Track all work through GitHub Issues with appropriate labels
+
+## Agent System Overview (15 agents — internal tooling only, not shipped)
+- **Control**: team-lead (orchestrator), planner (spec writer)
+- **Intelligence**: issue-hunter, repo-scout, researcher, use-case-scout, contributor-booster
+- **Execution**: code-improver, test-writer, test-runner
+- **Validation**: security-agent (hard gate), reviewer (hard gate)
+- **Support**: docs-updater, branch-manager (PR-only, never merges to main)
+- **Meta**: agent-architect (proposal-only, read-only)
+- Execution chain: `code-improver → test-writer → test-runner → security-agent → reviewer → docs-updater → branch-manager`
+- Destructive operations (file/function deletion) emit `⚠️ DESTRUCTIVE` tag and halt pipeline for human review
+- `pyproject.toml` auto-grant exception: if test-runner fails with `ModuleNotFoundError`, code-improver may add the missing dependency without human gate
+- Sequence lock: docs-updater always finishes before contributor-booster touches README.md
+- Agent definitions live in `.github/agents/` (gitignored)
+- Project board at `.agent-workspace/board.json` (gitignored)

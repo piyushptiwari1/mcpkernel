@@ -1,0 +1,49 @@
+# Custom policy template — copy and customize for your use case
+# Docs: https://github.com/piyushptiwari1/mcpguard/docs/USAGE.md
+
+rules:
+  # Example: Block a specific tool entirely
+  - id: CUSTOM-001
+    name: Block dangerous tool
+    description: Describe why this tool should be blocked
+    action: deny
+    priority: 10
+    tool_patterns:
+      - "your_tool_name_regex_here"
+    enabled: true
+
+  # Example: Require sandbox for tools matching a pattern
+  - id: CUSTOM-002
+    name: Sandbox code tools
+    description: Force all code-running tools through sandbox
+    action: sandbox
+    priority: 20
+    tool_patterns:
+      - "execute_.*"
+      - "run_code"
+    enabled: true
+
+  # Example: Audit with specific taint labels
+  - id: CUSTOM-003
+    name: Audit PII access
+    description: Log when PII-tainted data is accessed
+    action: audit
+    priority: 50
+    tool_patterns:
+      - "db_query"
+      - "search_.*"
+    taint_labels:
+      - pii
+    enabled: true
+
+  # Example: Conditional rule — only applies when context matches
+  - id: CUSTOM-004
+    name: Block in production
+    description: Deny tool in production environment
+    action: deny
+    priority: 15
+    tool_patterns:
+      - "debug_.*"
+    conditions:
+      environment: production
+    enabled: false  # Enable when ready

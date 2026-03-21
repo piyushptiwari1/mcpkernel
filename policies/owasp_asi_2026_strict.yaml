@@ -1,0 +1,143 @@
+# OWASP ASI 2026 Strict Policy for MCPGuard
+# Maps to OWASP Agentic Security Initiative threat categories
+# Reference: https://owasp.org/www-project-agentic-security-initiative/
+
+rules:
+  # ── ASI-01: Prompt Injection ─────────────────────────────────────────
+  - id: ASI-01-001
+    name: Block untrusted input in eval
+    description: Prevent user/LLM input from reaching eval-like sinks
+    action: deny
+    priority: 10
+    tool_patterns:
+      - ".*"
+    taint_labels:
+      - user_input
+      - llm_output
+      - untrusted_external
+    owasp_asi_id: ASI-01
+
+  # ── ASI-02: Tool Misuse ─────────────────────────────────────────────
+  - id: ASI-02-001
+    name: Sandbox all code execution
+    description: Force sandbox execution for any code-running tool
+    action: sandbox
+    priority: 20
+    tool_patterns:
+      - "execute_.*"
+      - "run_.*"
+      - "shell_.*"
+      - "code_.*"
+    owasp_asi_id: ASI-02
+
+  - id: ASI-02-002
+    name: Deny direct shell access
+    description: Block uncontrolled shell/exec calls
+    action: deny
+    priority: 10
+    tool_patterns:
+      - "shell_exec"
+      - "os_command"
+      - "subprocess_run"
+    owasp_asi_id: ASI-02
+
+  # ── ASI-03: Data Exfiltration ────────────────────────────────────────
+  - id: ASI-03-001
+    name: Block PII in outbound calls
+    description: Prevent PII-tainted data from reaching HTTP sinks
+    action: deny
+    priority: 10
+    tool_patterns:
+      - "http_post"
+      - "http_put"
+      - "send_email"
+      - "webhook_.*"
+    taint_labels:
+      - pii
+      - secret
+    owasp_asi_id: ASI-03
+
+  - id: ASI-03-002
+    name: Audit all external API calls
+    description: Log all outbound API interactions
+    action: audit
+    priority: 50
+    tool_patterns:
+      - "http_.*"
+      - "api_.*"
+      - "fetch_.*"
+    owasp_asi_id: ASI-03
+
+  # ── ASI-04: Unauthorized Access ──────────────────────────────────────
+  - id: ASI-04-001
+    name: Block filesystem traversal
+    description: Deny tools attempting path traversal
+    action: deny
+    priority: 10
+    tool_patterns:
+      - "file_read"
+      - "file_write"
+      - "fs_.*"
+    argument_patterns:
+      path: "\\.\\."
+    owasp_asi_id: ASI-04
+
+  - id: ASI-04-002
+    name: Block access to sensitive paths
+    description: Prevent reading sensitive system files
+    action: deny
+    priority: 10
+    tool_patterns:
+      - "file_read"
+      - "fs_read"
+    argument_patterns:
+      path: "(/etc/shadow|/etc/passwd|\\.env|credentials|secrets)"
+    owasp_asi_id: ASI-04
+
+  # ── ASI-05: Privilege Escalation ─────────────────────────────────────
+  - id: ASI-05-001
+    name: Block sudo/root operations
+    description: Prevent privilege escalation via tool calls
+    action: deny
+    priority: 5
+    tool_patterns:
+      - ".*"
+    argument_patterns:
+      command: "(sudo|su -|chmod 777|chown root)"
+    owasp_asi_id: ASI-05
+
+  # ── ASI-06: Non-Determinism ──────────────────────────────────────────
+  - id: ASI-06-001
+    name: Warn on non-deterministic tools
+    description: Flag tools that may produce non-reproducible results
+    action: warn
+    priority: 80
+    tool_patterns:
+      - "random_.*"
+      - "datetime_now"
+      - "uuid_generate"
+    owasp_asi_id: ASI-06
+
+  # ── ASI-07: Supply Chain ─────────────────────────────────────────────
+  - id: ASI-07-001
+    name: Audit package installs
+    description: Log and audit any package installation
+    action: audit
+    priority: 30
+    tool_patterns:
+      - "pip_install"
+      - "npm_install"
+      - "package_.*"
+    owasp_asi_id: ASI-07
+
+  # ── ASI-08: Resource Abuse ──────────────────────────────────────────
+  - id: ASI-08-001
+    name: Sandbox resource-intensive tools
+    description: Force sandboxing for compute-heavy operations
+    action: sandbox
+    priority: 30
+    tool_patterns:
+      - "compute_.*"
+      - "train_.*"
+      - "batch_.*"
+    owasp_asi_id: ASI-08

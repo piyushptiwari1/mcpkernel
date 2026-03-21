@@ -1,0 +1,34 @@
+# Minimal policy — lightweight defaults for development / low-risk environments
+# Only blocks the most dangerous operations
+
+rules:
+  - id: MIN-001
+    name: Block eval/exec
+    description: Prevent dynamic code execution with untrusted input
+    action: deny
+    priority: 10
+    tool_patterns:
+      - ".*"
+    taint_labels:
+      - untrusted_external
+    conditions: {}
+
+  - id: MIN-002
+    name: Block secret exfiltration
+    description: Prevent secrets from reaching outbound sinks
+    action: deny
+    priority: 10
+    tool_patterns:
+      - "http_post"
+      - "http_put"
+      - "send_email"
+    taint_labels:
+      - secret
+
+  - id: MIN-003
+    name: Log all tool calls
+    description: Audit every tool invocation for observability
+    action: audit
+    priority: 100
+    tool_patterns:
+      - ".*"
