@@ -69,13 +69,52 @@ async def _lifespan(app: FastAPI):  # type: ignore[type-arg]
     backend = create_backend(_settings.sandbox)
     _execute_fn = backend.execute_code
 
+    # --- Wire interceptor pipeline hooks ---
+    from mcpguard.proxy.hooks import AuditHook, DEEHook, PolicyHook, TaintHook
+
+    # Policy engine
+    from mcpguard.policy import PolicyAction, PolicyEngine, load_policy_file
+
+    policy_engine = PolicyEngine(
+        default_action=PolicyAction(_settings.policy.default_action),
+    )
+    for policy_path in _settings.policy.policy_paths:
+        if policy_path.exists():
+            rules = load_policy_file(policy_path)
+            policy_engine.add_rules(rules)
+    _pipeline.register(PolicyHook(policy_engine))
+
+    # Taint tracker
+    from mcpguard.taint import TaintTracker, detect_tainted_sources
+
+    taint_tracker = TaintTracker()
+    _pipeline.register(TaintHook(taint_tracker, detect_fn=detect_tainted_sources))
+
+    # DEE trace store
+    from mcpguard.dee import TraceStore
+
+    trace_store = TraceStore(db_path=str(_settings.dee.store_path))
+    await trace_store.open()
+    _pipeline.register(DEEHook(trace_store))
+
+    # Audit logger
+    from mcpguard.audit import AuditLogger
+
+    audit_logger = AuditLogger(db_path=str(_settings.audit.log_path).replace(".jsonl", ".db"))
+    await audit_logger.initialize()
+    _pipeline.register(AuditHook(audit_logger))
+
     logger.info(
         "mcpguard proxy started",
         host=_settings.proxy.host,
         port=_settings.proxy.port,
         backend=_settings.sandbox.backend.value,
+        hooks=[h.NAME for h in _pipeline.hooks],
     )
     yield
+
+    # Cleanup
+    await trace_store.close()
     logger.info("mcpguard proxy shutting down")
 
 
