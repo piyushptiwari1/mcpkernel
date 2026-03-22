@@ -61,7 +61,9 @@ jobs:
       - name: Install dependencies
         run: uv pip install --system -e ".[dev]" pip-audit
       - name: pip-audit
-        run: pip-audit --strict --desc on --ignore-vuln PYSEC-0 --skip-editable
+        run: |
+          uv pip freeze --system --exclude-editable > /tmp/audit-requirements.txt
+          pip-audit --strict --desc on -r /tmp/audit-requirements.txt
       - name: Check for secrets
         run: |
           pip install detect-secrets
