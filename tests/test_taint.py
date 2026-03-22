@@ -1,16 +1,16 @@
-"""Tests for mcpguard.taint — tracker, sources, sinks, propagation, static analysis."""
+"""Tests for mcpkernel.taint — tracker, sources, sinks, propagation, static analysis."""
 
 from __future__ import annotations
 
 import pytest
 
-from mcpguard.taint.tracker import TaintLabel, TaintTracker, TaintedValue
-from mcpguard.taint.sources import SourcePattern, detect_tainted_sources
-from mcpguard.taint.sinks import SinkAction, check_sink_operation, BUILTIN_SINKS
-from mcpguard.taint.propagation import TaintPropagator
-from mcpguard.taint.static_analysis import Severity, static_taint_analysis
-from mcpguard.taint.report import generate_taint_report
-from mcpguard.utils import TaintViolation
+from mcpkernel.taint.propagation import TaintPropagator
+from mcpkernel.taint.report import generate_taint_report
+from mcpkernel.taint.sinks import SinkAction, check_sink_operation
+from mcpkernel.taint.sources import detect_tainted_sources
+from mcpkernel.taint.static_analysis import static_taint_analysis
+from mcpkernel.taint.tracker import TaintLabel, TaintTracker
+from mcpkernel.utils import TaintViolation
 
 
 class TestTaintTracker:

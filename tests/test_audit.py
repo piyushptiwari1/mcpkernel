@@ -1,11 +1,11 @@
-"""Tests for mcpguard.audit — logger, exporter."""
+"""Tests for mcpkernel.audit — logger, exporter."""
 
 from __future__ import annotations
 
 import pytest
 
-from mcpguard.audit.logger import AuditEntry, AuditLogger
-from mcpguard.audit.exporter import AuditExportFormat, export_audit_logs
+from mcpkernel.audit.exporter import AuditExportFormat, export_audit_logs
+from mcpkernel.audit.logger import AuditEntry, AuditLogger
 
 
 class TestAuditEntry:
@@ -79,4 +79,4 @@ class TestAuditExporter:
         entries = [AuditEntry(event_type="test", tool_name="t")]
         entries[0].compute_hash()
         output = export_audit_logs(entries, format=AuditExportFormat.SIEM_CEF)
-        assert output.startswith("CEF:0|MCPGuard")
+        assert output.startswith("CEF:0|MCPKernel")

@@ -1,22 +1,19 @@
-"""Tests for mcpguard.config — settings loading and validation."""
+"""Tests for mcpkernel.config — settings loading and validation."""
 
-import os
 from pathlib import Path
 
-import pytest
-
-from mcpguard.config import (
-    MCPGuardSettings,
+from mcpkernel.config import (
+    LogLevel,
+    MCPKernelSettings,
     SandboxBackend,
     TaintMode,
-    LogLevel,
     load_config,
 )
 
 
 class TestDefaultConfig:
     def test_default_values(self):
-        settings = MCPGuardSettings()
+        settings = MCPKernelSettings()
         assert settings.proxy.host == "127.0.0.1"
         assert settings.proxy.port == 8080
         assert settings.sandbox.backend == SandboxBackend.DOCKER
@@ -34,29 +31,23 @@ class TestDefaultConfig:
 class TestConfigLoading:
     def test_load_default(self):
         settings = load_config()
-        assert isinstance(settings, MCPGuardSettings)
+        assert isinstance(settings, MCPKernelSettings)
 
     def test_load_from_yaml(self, tmp_path: Path):
         config_file = tmp_path / "test_config.yaml"
-        config_file.write_text(
-            "proxy:\n"
-            "  host: 0.0.0.0\n"
-            "  port: 9000\n"
-            "sandbox:\n"
-            "  backend: wasm\n"
-        )
+        config_file.write_text("proxy:\n  host: 0.0.0.0\n  port: 9000\nsandbox:\n  backend: wasm\n")
         settings = load_config(config_path=str(config_file))
-        assert settings.proxy.host == "0.0.0.0"
+        assert settings.proxy.host == "0.0.0.0"  # noqa: S104
         assert settings.proxy.port == 9000
         assert settings.sandbox.backend == SandboxBackend.WASM
 
     def test_env_override(self, monkeypatch):
-        monkeypatch.setenv("MCPGUARD_PROXY__PORT", "7777")
+        monkeypatch.setenv("MCPKERNEL_PROXY__PORT", "7777")
         settings = load_config()
         assert settings.proxy.port == 7777
 
 
 class TestConfigValidation:
     def test_valid_log_levels(self):
-        settings = MCPGuardSettings()
+        settings = MCPKernelSettings()
         assert settings.observability.log_level in (LogLevel.DEBUG, LogLevel.INFO, LogLevel.WARNING, LogLevel.ERROR)

@@ -1,16 +1,16 @@
-"""Example: Using MCPGuard with CrewAI.
+"""Example: Using MCPKernel with CrewAI.
 
 Shows how CrewAI agents can be wrapped to route all tool calls
-through the MCPGuard security gateway.
+through the MCPKernel security gateway.
 """
 
 import httpx
 
-MCPGUARD_URL = "http://localhost:8000/mcp"
+MCPKERNEL_URL = "http://localhost:8000/mcp"
 
 
-class MCPGuardTool:
-    """Wrapper that routes tool calls through MCPGuard."""
+class MCPKernelTool:
+    """Wrapper that routes tool calls through MCPKernel."""
 
     def __init__(self, tool_name: str, description: str = ""):
         self.name = tool_name
@@ -26,7 +26,7 @@ class MCPGuardTool:
                 "arguments": kwargs,
             },
         }
-        resp = httpx.post(MCPGUARD_URL, json=payload, timeout=30)
+        resp = httpx.post(MCPKERNEL_URL, json=payload, timeout=30)
         resp.raise_for_status()
         data = resp.json()
 
@@ -38,10 +38,10 @@ class MCPGuardTool:
 
 
 def crewai_example():
-    """Simulate CrewAI agents using MCPGuard-protected tools."""
+    """Simulate CrewAI agents using MCPKernel-protected tools."""
 
-    search_tool = MCPGuardTool("web_search", "Search the web safely")
-    code_tool = MCPGuardTool("execute_code", "Run code in sandbox")
+    search_tool = MCPKernelTool("web_search", "Search the web safely")
+    code_tool = MCPKernelTool("execute_code", "Run code in sandbox")
 
     # Research task
     result = search_tool.run(query="latest Python security best practices")

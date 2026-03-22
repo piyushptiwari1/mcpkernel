@@ -6,12 +6,10 @@ import csv
 import io
 import time
 
-import pytest
-
-from mcpguard.audit.exporter import AuditExportFormat, export_audit_logs
-from mcpguard.audit.logger import AuditEntry
-from mcpguard.policy.engine import PolicyAction, PolicyEngine, PolicyRule
-from mcpguard.proxy.rate_limit import InMemoryRateLimiter
+from mcpkernel.audit.exporter import AuditExportFormat, export_audit_logs
+from mcpkernel.audit.logger import AuditEntry
+from mcpkernel.policy.engine import PolicyAction, PolicyEngine, PolicyRule
+from mcpkernel.proxy.rate_limit import InMemoryRateLimiter
 
 
 # ---------------------------------------------------------------------------
@@ -42,12 +40,14 @@ class TestPolicyDefaultAction:
     def test_matched_rule_overrides_default(self):
         """When a rule matches, the default_action is irrelevant."""
         engine = PolicyEngine(default_action=PolicyAction.ALLOW)
-        engine.add_rule(PolicyRule(
-            id="block-exec",
-            name="Block exec",
-            action=PolicyAction.DENY,
-            tool_patterns=["exec_.*"],
-        ))
+        engine.add_rule(
+            PolicyRule(
+                id="block-exec",
+                name="Block exec",
+                action=PolicyAction.DENY,
+                tool_patterns=["exec_.*"],
+            )
+        )
         decision = engine.evaluate("exec_code", {})
         assert decision.action == PolicyAction.DENY
 

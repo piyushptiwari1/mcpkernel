@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-from mcpguard.policy.engine import PolicyAction, PolicyEngine, PolicyRule
-from mcpguard.proxy.hooks import AuditHook, DEEHook, PolicyHook, TaintHook
-from mcpguard.proxy.interceptor import (
+from mcpkernel.policy.engine import PolicyAction, PolicyEngine, PolicyRule
+from mcpkernel.proxy.hooks import PolicyHook, TaintHook
+from mcpkernel.proxy.interceptor import (
     ExecutionResult,
     InterceptorContext,
     InterceptorPipeline,
     MCPToolCall,
 )
-from mcpguard.taint.tracker import TaintTracker
+from mcpkernel.taint.tracker import TaintTracker
 
 
 def _make_ctx(tool_name: str = "test_tool", arguments: dict | None = None) -> InterceptorContext:
@@ -41,12 +41,14 @@ class TestPolicyHook:
     @pytest.mark.asyncio
     async def test_denies_matching_rule(self):
         engine = PolicyEngine()
-        engine.add_rule(PolicyRule(
-            id="block-shell",
-            name="Block shell",
-            action=PolicyAction.DENY,
-            tool_patterns=["shell_.*"],
-        ))
+        engine.add_rule(
+            PolicyRule(
+                id="block-shell",
+                name="Block shell",
+                action=PolicyAction.DENY,
+                tool_patterns=["shell_.*"],
+            )
+        )
         hook = PolicyHook(engine)
         ctx = _make_ctx(tool_name="shell_exec")
         await hook.pre_execution(ctx)
@@ -85,7 +87,7 @@ class TestTaintHook:
 
     @pytest.mark.asyncio
     async def test_detects_tainted_sources(self):
-        from mcpguard.taint.sources import detect_tainted_sources
+        from mcpkernel.taint.sources import detect_tainted_sources
 
         tracker = TaintTracker()
         hook = TaintHook(tracker, detect_fn=detect_tainted_sources)
@@ -141,7 +143,7 @@ class TestPipelineIntegration:
         engine = PolicyEngine()
         tracker = TaintTracker()
 
-        from mcpguard.taint.sources import detect_tainted_sources
+        from mcpkernel.taint.sources import detect_tainted_sources
 
         pipeline.register(PolicyHook(engine))
         pipeline.register(TaintHook(tracker, detect_fn=detect_tainted_sources))

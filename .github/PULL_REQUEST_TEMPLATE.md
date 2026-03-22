@@ -21,7 +21,7 @@ Fixes #
 
 ## Checklist
 
-- [ ] My code follows MCPGuard's [coding conventions](CONTRIBUTING.md)
+- [ ] My code follows MCPKernel's [coding conventions](CONTRIBUTING.md)
 - [ ] I have added tests that prove my fix/feature works
 - [ ] All tests pass: `python -m pytest tests/ -v --tb=short`
 - [ ] Linting passes: `ruff check src/ tests/`

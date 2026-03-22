@@ -1,9 +1,9 @@
 ---
-description: "Use when writing or modifying Python code in MCPGuard. Covers async patterns, type hints, structlog logging, error handling, and module conventions."
+description: "Use when writing or modifying Python code in MCPKernel. Covers async patterns, type hints, structlog logging, error handling, and module conventions."
 applyTo: "src/**/*.py"
 ---
 
-# MCPGuard Python Conventions
+# MCPKernel Python Conventions
 
 ## Async-First
 - All I/O-bound functions must be `async def`
@@ -27,4 +27,4 @@ applyTo: "src/**/*.py"
 
 ## Imports
 - stdlib → third-party → local (separated by blank lines)
-- Use absolute imports: `from mcpguard.policy.engine import PolicyEngine`
+- Use absolute imports: `from mcpkernel.policy.engine import PolicyEngine`

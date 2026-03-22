@@ -1,15 +1,18 @@
-"""Tests for mcpguard.dee — envelope, trace store, replay, drift."""
+"""Tests for mcpkernel.dee — envelope, trace store, replay, drift."""
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
-from mcpguard.dee.envelope import ExecutionTrace
-from mcpguard.dee.snapshot import take_environment_snapshot
-from mcpguard.dee.trace_store import TraceStore
-from mcpguard.dee.drift import DriftCategory, DriftReport
-from mcpguard.proxy.interceptor import ExecutionResult
-from mcpguard.utils import sha256_json
+from mcpkernel.dee.drift import DriftCategory, DriftReport
+from mcpkernel.dee.envelope import ExecutionTrace
+from mcpkernel.dee.snapshot import take_environment_snapshot
+from mcpkernel.proxy.interceptor import ExecutionResult
+
+if TYPE_CHECKING:
+    from mcpkernel.dee.trace_store import TraceStore
 
 
 class TestExecutionTrace:
@@ -70,17 +73,19 @@ class TestTraceStore:
     async def test_list_traces(self, trace_db: TraceStore):
         result = ExecutionResult(content=[], is_error=False)
         for i in range(5):
-            await trace_db.store(ExecutionTrace(
-                trace_id=f"list-{i}",
-                tool_name="tool",
-                agent_id="agent",
-                input_hash=f"in-{i}",
-                output_hash=f"out-{i}",
-                env_snapshot_hash="env",
-                timestamp=float(i),
-                duration_seconds=0.0,
-                result=result,
-            ))
+            await trace_db.store(
+                ExecutionTrace(
+                    trace_id=f"list-{i}",
+                    tool_name="tool",
+                    agent_id="agent",
+                    input_hash=f"in-{i}",
+                    output_hash=f"out-{i}",
+                    env_snapshot_hash="env",
+                    timestamp=float(i),
+                    duration_seconds=0.0,
+                    result=result,
+                )
+            )
         traces = await trace_db.list_traces(limit=3)
         assert len(traces) == 3
 

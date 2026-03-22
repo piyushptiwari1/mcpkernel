@@ -1,12 +1,10 @@
-"""Tests for mcpguard.context — reducer, dependency graph, pruning."""
+"""Tests for mcpkernel.context — reducer, dependency graph, pruning."""
 
 from __future__ import annotations
 
-import pytest
-
-from mcpguard.context.reducer import ContextReducer, ReductionResult
-from mcpguard.context.dependency_graph import DependencyGraph, build_dependency_graph
-from mcpguard.context.pruning import PruningStrategy, prune_context
+from mcpkernel.context.dependency_graph import DependencyGraph, build_dependency_graph
+from mcpkernel.context.pruning import PruningStrategy, prune_context
+from mcpkernel.context.reducer import ContextReducer
 
 
 class TestContextReducer:

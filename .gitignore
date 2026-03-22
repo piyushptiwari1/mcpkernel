@@ -57,7 +57,7 @@ docker/firecracker/*.rootfs
 
 # eBPF
 *.o
-src/mcpguard/ebpf/programs/*.o
+src/mcpkernel/ebpf/programs/*.o
 
 # Autonomous Agent Team (local-only, not part of the codebase)
 # These are VS Code / GitHub Copilot agent definitions for the autonomous dev team

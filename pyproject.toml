@@ -3,12 +3,12 @@ requires = ["hatchling>=1.21"]
 build-backend = "hatchling.build"
 
 [project]
-name = "mcpguard"
+name = "mcpkernel"
 version = "0.1.0"
-description = "The mandatory, deterministic MCP/A2A gateway that turns every agent tool call into a provably replayable, taint-safe, policy-enforced execution."
+description = "Open-source MCP/A2A security gateway — policy enforcement, taint tracking, sandboxed execution, deterministic envelopes, and Sigstore audit for every AI agent tool call. OWASP ASI 2026 compliant."
 readme = "README.md"
 license = "Apache-2.0"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 authors = [
     { name = "Piyush Tiwari", email = "piyushptiwari1@users.noreply.github.com" },
 ]
@@ -23,6 +23,13 @@ keywords = [
     "deterministic-execution",
     "policy-enforcement",
     "owasp",
+    "ai-security",
+    "llm-security",
+    "genai-security",
+    "agent-sovereignty",
+    "model-context-protocol",
+    "sigstore",
+    "mcp-gateway",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -32,6 +39,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Security",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
@@ -42,7 +50,7 @@ dependencies = [
     "uvicorn[standard]>=0.30",
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
-    "typer[all]>=0.12",
+    "typer>=0.12",
     "anyio>=4.4",
     "httpx>=0.27",
     "structlog>=24.1",
@@ -64,7 +72,7 @@ firecracker = ["aiofiles>=23.2"]
 wasm = ["wasmtime>=19.0"]
 ebpf = ["bcc>=0.30"]
 all = [
-    "mcpguard[docker,firecracker,wasm,ebpf]",
+    "mcpkernel[docker,firecracker,wasm,ebpf]",
 ]
 dev = [
     "pytest>=8.2",
@@ -84,20 +92,20 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/piyushptiwari1/mcpguard"
-Documentation = "https://github.com/piyushptiwari1/mcpguard/tree/main/docs"
-Repository = "https://github.com/piyushptiwari1/mcpguard"
-Issues = "https://github.com/piyushptiwari1/mcpguard/issues"
-Changelog = "https://github.com/piyushptiwari1/mcpguard/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/piyushptiwari1/mcpkernel"
+Documentation = "https://github.com/piyushptiwari1/mcpkernel/tree/main/docs"
+Repository = "https://github.com/piyushptiwari1/mcpkernel"
+Issues = "https://github.com/piyushptiwari1/mcpkernel/issues"
+Changelog = "https://github.com/piyushptiwari1/mcpkernel/blob/main/CHANGELOG.md"
 
 [project.scripts]
-mcpguard = "mcpguard.cli:app"
+mcpkernel = "mcpkernel.cli:app"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/mcpguard"]
+packages = ["src/mcpkernel"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py313"
 line-length = 120
 src = ["src", "tests"]
 
@@ -119,10 +127,10 @@ select = [
 ignore = ["S101", "S603", "S607"]  # allow assert in tests, subprocess
 
 [tool.ruff.lint.isort]
-known-first-party = ["mcpguard"]
+known-first-party = ["mcpkernel"]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.13"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
@@ -131,6 +139,7 @@ plugins = ["pydantic.mypy"]
 [[tool.mypy.overrides]]
 module = ["docker.*", "bcc.*", "wasmtime.*", "sigstore.*"]
 ignore_missing_imports = true
+follow_imports = "skip"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -143,7 +152,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["mcpguard"]
+source = ["mcpkernel"]
 branch = true
 
 [tool.coverage.report]

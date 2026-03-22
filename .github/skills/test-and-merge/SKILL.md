@@ -1,6 +1,6 @@
 ---
 name: test-and-merge
-description: 'Multi-step workflow to run the full MCPGuard test suite, validate code quality, and merge development branch to main when all checks pass. Use when validating changes, preparing for merge, or checking if development is ready for main.'
+description: 'Multi-step workflow to run the full MCPKernel test suite, validate code quality, and merge development branch to main when all checks pass. Use when validating changes, preparing for merge, or checking if development is ready for main.'
 ---
 
 # Test and Merge Workflow
@@ -21,7 +21,6 @@ git log --oneline development..HEAD  # or HEAD..development
 
 ### Step 2: Run Full Test Suite
 ```bash
-cd /home/piyush/Desktop/SecureLLM
 python -m pytest tests/ -v --tb=short
 ```
 - All 106+ tests must pass

@@ -2,29 +2,30 @@
 
 from __future__ import annotations
 
-import time
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
-import pytest_asyncio
 
-from mcpguard.policy.engine import PolicyAction, PolicyEngine, PolicyRule
-from mcpguard.policy.loader import _parse_rule, load_policy_file
-from mcpguard.taint.tracker import TaintLabel, TaintTracker, TaintedValue
-from mcpguard.taint.sources import detect_tainted_sources
-from mcpguard.taint.sinks import (
+from mcpkernel.audit.exporter import AuditExportFormat, export_audit_logs
+from mcpkernel.audit.logger import AuditEntry, AuditLogger
+from mcpkernel.policy.engine import PolicyAction, PolicyEngine, PolicyRule
+from mcpkernel.policy.loader import _parse_rule, load_policy_file
+from mcpkernel.proxy.interceptor import InterceptorPipeline, PluginHook
+from mcpkernel.proxy.rate_limit import InMemoryRateLimiter
+from mcpkernel.taint.sinks import (
     SinkAction,
     SinkDefinition,
     check_sink_operation,
 )
-from mcpguard.audit.logger import AuditEntry, AuditLogger
-from mcpguard.audit.exporter import AuditExportFormat, export_audit_logs
-from mcpguard.proxy.interceptor import InterceptorPipeline, PluginHook
-from mcpguard.proxy.rate_limit import InMemoryRateLimiter
-from mcpguard.utils import ConfigError, TaintViolation
+from mcpkernel.taint.sources import detect_tainted_sources
+from mcpkernel.taint.tracker import TaintedValue, TaintLabel, TaintTracker
+from mcpkernel.utils import ConfigError, TaintViolation
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ── Policy: remove_rule ──────────────────────────────────────────────────
+
 
 class TestPolicyEngineRemoveRule:
     """Tests for PolicyEngine.remove_rule()."""
@@ -60,6 +61,7 @@ class TestPolicyEngineRemoveRule:
 
 # ── Policy: add_rules (batch) ───────────────────────────────────────────
 
+
 class TestPolicyEngineAddRules:
     """Tests for PolicyEngine.add_rules() batch insertion."""
 
@@ -84,6 +86,7 @@ class TestPolicyEngineAddRules:
 
 
 # ── Policy: _parse_rule edge cases ──────────────────────────────────────
+
 
 class TestParseRule:
     """Tests for _parse_rule with edge-case inputs."""
@@ -124,6 +127,7 @@ class TestParseRule:
 
 # ── Policy: load_policy_file missing rules key ──────────────────────────
 
+
 class TestLoadPolicyFileMissingRules:
     """Tests for load_policy_file with invalid YAML."""
 
@@ -142,6 +146,7 @@ class TestLoadPolicyFileMissingRules:
 
 # ── Taint: get_all_tainted ──────────────────────────────────────────────
 
+
 class TestTaintTrackerGetAllTainted:
     """Tests for TaintTracker.get_all_tainted()."""
 
@@ -156,7 +161,7 @@ class TestTaintTrackerGetAllTainted:
     def test_excludes_cleared_values(self):
         """Test that values with all labels cleared are excluded."""
         tracker = TaintTracker()
-        tv = tracker.mark("x", TaintLabel.PII, source_id="s1")
+        tracker.mark("x", TaintLabel.PII, source_id="s1")
         tracker.mark("y", TaintLabel.SECRET, source_id="s2")
         tracker.clear("s1", TaintLabel.PII, sanitizer="test")
         tainted = tracker.get_all_tainted()
@@ -170,6 +175,7 @@ class TestTaintTrackerGetAllTainted:
 
 
 # ── Taint: TaintedValue.add_label ───────────────────────────────────────
+
 
 class TestTaintedValueAddLabel:
     """Tests for TaintedValue.add_label()."""
@@ -197,6 +203,7 @@ class TestTaintedValueAddLabel:
 
 
 # ── Taint: detect_tainted_sources — SSN, CC, phone ─────────────────────
+
 
 class TestDetectTaintedSourcesPII:
     """Tests for SSN, credit card, and phone number detection."""
@@ -234,6 +241,7 @@ class TestDetectTaintedSourcesPII:
 
 
 # ── Taint: check_sink_operation built-in sinks ─────────────────────────
+
 
 class TestCheckSinkBuiltinSinks:
     """Tests for check_sink_operation with each built-in sink."""
@@ -290,6 +298,7 @@ class TestCheckSinkBuiltinSinks:
 
 # ── Taint: check_sink_operation custom_sinks ────────────────────────────
 
+
 class TestCheckSinkCustomSinks:
     """Tests for check_sink_operation with custom_sinks parameter."""
 
@@ -338,6 +347,7 @@ class TestCheckSinkCustomSinks:
 
 # ── Audit: query with since parameter ───────────────────────────────────
 
+
 class TestAuditLoggerQuerySince:
     """Tests for AuditLogger.query() with the since parameter."""
 
@@ -364,6 +374,7 @@ class TestAuditLoggerQuerySince:
 
 # ── Audit: export_audit_logs with empty list ────────────────────────────
 
+
 class TestExportAuditLogsEmpty:
     """Tests for export_audit_logs with empty entries."""
 
@@ -386,6 +397,7 @@ class TestExportAuditLogsEmpty:
 
 
 # ── Proxy: InterceptorPipeline.unregister ───────────────────────────────
+
 
 class TestInterceptorPipelineUnregister:
     """Tests for InterceptorPipeline.unregister()."""
@@ -435,6 +447,7 @@ class TestInterceptorPipelineUnregister:
 
 
 # ── Proxy: InMemoryRateLimiter.reset ────────────────────────────────────
+
 
 class TestInMemoryRateLimiterReset:
     """Tests for InMemoryRateLimiter.reset()."""

@@ -1,26 +1,21 @@
-"""Tests for mcpguard.proxy — interceptor, auth, rate limiter, transform."""
+"""Tests for mcpkernel.proxy — interceptor, auth, rate limiter, transform."""
 
 from __future__ import annotations
 
-import asyncio
-import time
-
 import pytest
 
-from mcpguard.proxy.interceptor import (
+from mcpkernel.proxy.auth import APIKeyAuth, NoAuth, create_auth_backend
+from mcpkernel.proxy.interceptor import (
     ExecutionResult,
-    HookPhase,
     InterceptorContext,
     InterceptorPipeline,
-    MCPToolCall,
     PluginHook,
     build_jsonrpc_error,
     build_jsonrpc_response,
     parse_mcp_tool_call,
 )
-from mcpguard.proxy.auth import APIKeyAuth, NoAuth, create_auth_backend
-from mcpguard.proxy.rate_limit import InMemoryRateLimiter
-from mcpguard.proxy.transform import normalize_from_mcp, normalize_to_mcp
+from mcpkernel.proxy.rate_limit import InMemoryRateLimiter
+from mcpkernel.proxy.transform import normalize_from_mcp, normalize_to_mcp
 
 
 class TestMCPToolCall:
@@ -109,7 +104,8 @@ class TestAuth:
 
     @pytest.mark.asyncio
     async def test_api_key_invalid(self):
-        from mcpguard.utils import AuthError
+        from mcpkernel.utils import AuthError
+
         backend = APIKeyAuth(valid_keys=["test-key-123"])
         with pytest.raises(AuthError):
             await backend.authenticate({"authorization": "Bearer wrong-key"})
