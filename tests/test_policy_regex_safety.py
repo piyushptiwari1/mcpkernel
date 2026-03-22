@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from mcpguard.policy.engine import PolicyAction, PolicyEngine, PolicyRule
+from mcpkernel.policy.engine import PolicyAction, PolicyEngine, PolicyRule
 
 
 class TestPolicyRegexSafety:

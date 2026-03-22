@@ -3,7 +3,7 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: "mcpguard"
+  - job_name: "mcpkernel"
     metrics_path: "/metrics"
     static_configs:
-      - targets: ["mcpguard:8000"]
+      - targets: ["mcpkernel:8000"]

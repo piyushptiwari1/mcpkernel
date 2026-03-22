@@ -1,6 +1,6 @@
 ---
 name: docs-sync
-description: 'Multi-step workflow to audit MCPGuard documentation against the codebase and update README.md, docs/USAGE.md, CHANGELOG.md. Use when synchronizing documentation with code changes, auditing doc accuracy, or before releases.'
+description: 'Multi-step workflow to audit MCPKernel documentation against the codebase and update README.md, docs/USAGE.md, CHANGELOG.md. Use when synchronizing documentation with code changes, auditing doc accuracy, or before releases.'
 ---
 
 # Documentation Sync Workflow
@@ -18,16 +18,16 @@ description: 'Multi-step workflow to audit MCPGuard documentation against the co
 2. Verify:
    - Python version badge matches `pyproject.toml`
    - Quick start commands work
-   - Feature list matches actual packages in `src/mcpguard/`
+   - Feature list matches actual packages in `src/mcpkernel/`
    - Architecture diagram is accurate
    - All links are valid
 
 ### Step 2: Audit docs/USAGE.md
 1. Read `docs/USAGE.md`
 2. Cross-reference with:
-   - `src/mcpguard/config.py` for configuration options
-   - `src/mcpguard/cli.py` for CLI commands
-   - `src/mcpguard/policy/` for policy syntax
+   - `src/mcpkernel/config.py` for configuration options
+   - `src/mcpkernel/cli.py` for CLI commands
+   - `src/mcpkernel/policy/` for policy syntax
    - `policies/` for example policies
 3. Verify all code examples match current API
 
@@ -53,5 +53,5 @@ description: 'Multi-step workflow to audit MCPGuard documentation against the co
 - `docs/USAGE.md` — Usage guide
 - `CHANGELOG.md` — Version history
 - `CONTRIBUTING.md` — Contributor guide
-- `src/mcpguard/config.py` — Configuration reference
-- `src/mcpguard/cli.py` — CLI reference
+- `src/mcpkernel/config.py` — Configuration reference
+- `src/mcpkernel/cli.py` — CLI reference

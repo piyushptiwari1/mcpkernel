@@ -1,10 +1,10 @@
-"""Tests for mcpguard.config — settings loading and validation."""
+"""Tests for mcpkernel.config — settings loading and validation."""
 
 from pathlib import Path
 
-from mcpguard.config import (
+from mcpkernel.config import (
     LogLevel,
-    MCPGuardSettings,
+    MCPKernelSettings,
     SandboxBackend,
     TaintMode,
     load_config,
@@ -13,7 +13,7 @@ from mcpguard.config import (
 
 class TestDefaultConfig:
     def test_default_values(self):
-        settings = MCPGuardSettings()
+        settings = MCPKernelSettings()
         assert settings.proxy.host == "127.0.0.1"
         assert settings.proxy.port == 8080
         assert settings.sandbox.backend == SandboxBackend.DOCKER
@@ -31,7 +31,7 @@ class TestDefaultConfig:
 class TestConfigLoading:
     def test_load_default(self):
         settings = load_config()
-        assert isinstance(settings, MCPGuardSettings)
+        assert isinstance(settings, MCPKernelSettings)
 
     def test_load_from_yaml(self, tmp_path: Path):
         config_file = tmp_path / "test_config.yaml"
@@ -42,12 +42,12 @@ class TestConfigLoading:
         assert settings.sandbox.backend == SandboxBackend.WASM
 
     def test_env_override(self, monkeypatch):
-        monkeypatch.setenv("MCPGUARD_PROXY__PORT", "7777")
+        monkeypatch.setenv("MCPKERNEL_PROXY__PORT", "7777")
         settings = load_config()
         assert settings.proxy.port == 7777
 
 
 class TestConfigValidation:
     def test_valid_log_levels(self):
-        settings = MCPGuardSettings()
+        settings = MCPKernelSettings()
         assert settings.observability.log_level in (LogLevel.DEBUG, LogLevel.INFO, LogLevel.WARNING, LogLevel.ERROR)

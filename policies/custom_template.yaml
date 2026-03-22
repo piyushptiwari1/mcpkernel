@@ -1,5 +1,5 @@
 # Custom policy template — copy and customize for your use case
-# Docs: https://github.com/piyushptiwari1/mcpguard/docs/USAGE.md
+# Docs: https://github.com/piyushptiwari1/mcpkernel/docs/USAGE.md
 
 rules:
   # Example: Block a specific tool entirely

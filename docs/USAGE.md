@@ -1,6 +1,6 @@
-# MCPGuard Usage Guide
+# MCPKernel Usage Guide
 
-## How to Use MCPGuard on Your Personal System
+## How to Use MCPKernel on Your Personal System
 
 ### Prerequisites
 
@@ -11,8 +11,8 @@
 ### Step 1: Clone and Install
 
 ```bash
-git clone https://github.com/piyushptiwari1/mcpguard.git
-cd mcpguard
+git clone https://github.com/piyushptiwari1/mcpkernel.git
+cd mcpkernel
 
 # Create a virtual environment (recommended)
 python -m venv .venv
@@ -31,12 +31,12 @@ pip install -e ".[dev]"
 ### Step 2: Initialize Your Project
 
 ```bash
-mcpguard init
+mcpkernel init
 ```
 
 This creates:
 ```
-.mcpguard/
+.mcpkernel/
 ├── config.yaml       # Main configuration
 └── policies/
     └── default.yaml  # Default policy rules
@@ -44,7 +44,7 @@ This creates:
 
 ### Step 3: Configure
 
-Edit `.mcpguard/config.yaml`:
+Edit `.mcpkernel/config.yaml`:
 
 ```yaml
 proxy:
@@ -59,7 +59,7 @@ taint:
   mode: hybrid           # Options: decorator, ebpf, hybrid, disabled
 
 policy:
-  policy_dir: .mcpguard/policies
+  policy_dir: .mcpkernel/policies
 
 observability:
   log_level: info
@@ -71,13 +71,13 @@ observability:
 Copy the strict policy for full OWASP ASI 2026 coverage:
 
 ```bash
-cp policies/owasp_asi_2026_strict.yaml .mcpguard/policies/
+cp policies/owasp_asi_2026_strict.yaml .mcpkernel/policies/
 ```
 
 Or create custom rules:
 
 ```yaml
-# .mcpguard/policies/my_rules.yaml
+# .mcpkernel/policies/my_rules.yaml
 rules:
   - id: MY-001
     name: Block shell execution
@@ -97,26 +97,26 @@ rules:
 Validate your rules:
 
 ```bash
-mcpguard validate-policy .mcpguard/policies/
+mcpkernel validate-policy .mcpkernel/policies/
 ```
 
 ### Step 5: Start the Gateway
 
 ```bash
-mcpguard serve
+mcpkernel serve
 ```
 
 The gateway starts at `http://localhost:8000`.
 
-### Step 6: Point Your AI Agent to MCPGuard
+### Step 6: Point Your AI Agent to MCPKernel
 
-Instead of connecting your AI agent directly to MCP servers, point it to MCPGuard:
+Instead of connecting your AI agent directly to MCP servers, point it to MCPKernel:
 
 ```python
 # Before (direct MCP connection)
 # mcp_url = "http://localhost:3000/mcp"
 
-# After (through MCPGuard)
+# After (through MCPKernel)
 mcp_url = "http://localhost:8000/mcp"
 ```
 
@@ -124,19 +124,19 @@ mcp_url = "http://localhost:8000/mcp"
 
 ```bash
 # View recent traces
-mcpguard trace-list
+mcpkernel trace-list
 
 # Export a specific trace
-mcpguard trace-export <trace-id>
+mcpkernel trace-export <trace-id>
 
 # Query audit logs
-mcpguard audit-query --event-type policy_violation
+mcpkernel audit-query --event-type policy_violation
 
 # Verify audit integrity
-mcpguard audit-verify
+mcpkernel audit-verify
 
 # Static code analysis
-mcpguard scan path/to/file.py
+mcpkernel scan path/to/file.py
 ```
 
 ---
@@ -145,13 +145,13 @@ mcpguard scan path/to/file.py
 
 ```bash
 # Build the image
-docker build -t mcpguard .
+docker build -t mcpkernel .
 
 # Run with volume-mounted policies
 docker run -p 8000:8000 \
   -v $(pwd)/policies:/app/policies:ro \
   -v /var/run/docker.sock:/var/run/docker.sock \
-  mcpguard
+  mcpkernel
 
 # Or use Docker Compose
 docker compose up -d
@@ -165,15 +165,15 @@ All configuration can be overridden with environment variables:
 
 | Variable | Description | Default |
 |---|---|---|
-| `MCPGUARD_PROXY__HOST` | Bind address | `127.0.0.1` |
-| `MCPGUARD_PROXY__PORT` | Bind port | `8000` |
-| `MCPGUARD_SANDBOX__BACKEND` | Sandbox backend | `docker` |
-| `MCPGUARD_SANDBOX__TIMEOUT_SECONDS` | Execution timeout | `30` |
-| `MCPGUARD_TAINT__MODE` | Taint tracking mode | `hybrid` |
-| `MCPGUARD_POLICY__POLICY_DIR` | Policy directory | `policies` |
-| `MCPGUARD_OBSERVABILITY__LOG_LEVEL` | Log level | `info` |
-| `MCPGUARD_OBSERVABILITY__METRICS_ENABLED` | Enable Prometheus metrics | `true` |
-| `MCPGUARD_OBSERVABILITY__OTLP_ENDPOINT` | OpenTelemetry endpoint | `` |
+| `MCPKERNEL_PROXY__HOST` | Bind address | `127.0.0.1` |
+| `MCPKERNEL_PROXY__PORT` | Bind port | `8000` |
+| `MCPKERNEL_SANDBOX__BACKEND` | Sandbox backend | `docker` |
+| `MCPKERNEL_SANDBOX__TIMEOUT_SECONDS` | Execution timeout | `30` |
+| `MCPKERNEL_TAINT__MODE` | Taint tracking mode | `hybrid` |
+| `MCPKERNEL_POLICY__POLICY_DIR` | Policy directory | `policies` |
+| `MCPKERNEL_OBSERVABILITY__LOG_LEVEL` | Log level | `info` |
+| `MCPKERNEL_OBSERVABILITY__METRICS_ENABLED` | Enable Prometheus metrics | `true` |
+| `MCPKERNEL_OBSERVABILITY__OTLP_ENDPOINT` | OpenTelemetry endpoint | `` |
 
 ---
 
@@ -181,24 +181,24 @@ All configuration can be overridden with environment variables:
 
 See the `examples/` directory for:
 
-- **`langchain_example.py`** — LangChain agent with MCPGuard
-- **`crewai_example.py`** — CrewAI tools via MCPGuard
+- **`langchain_example.py`** — LangChain agent with MCPKernel
+- **`crewai_example.py`** — CrewAI tools via MCPKernel
 - **`copilot_guard_example.py`** — AI coding assistant protection
 
 ---
 
 ## Troubleshooting
 
-### MCPGuard won't start
+### MCPKernel won't start
 - Check that port 8000 is not in use: `lsof -i :8000`
-- Verify config: `mcpguard config-show`
+- Verify config: `mcpkernel config-show`
 
 ### Docker sandbox errors
 - Ensure Docker is running: `docker info`
 - Check Docker socket permissions: `ls -la /var/run/docker.sock`
 
 ### Policy not loading
-- Validate syntax: `mcpguard validate-policy <path>`
+- Validate syntax: `mcpkernel validate-policy <path>`
 - Check YAML indentation
 
 ### eBPF probes unavailable

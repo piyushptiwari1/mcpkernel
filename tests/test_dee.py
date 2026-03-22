@@ -1,4 +1,4 @@
-"""Tests for mcpguard.dee — envelope, trace store, replay, drift."""
+"""Tests for mcpkernel.dee — envelope, trace store, replay, drift."""
 
 from __future__ import annotations
 
@@ -6,13 +6,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from mcpguard.dee.drift import DriftCategory, DriftReport
-from mcpguard.dee.envelope import ExecutionTrace
-from mcpguard.dee.snapshot import take_environment_snapshot
-from mcpguard.proxy.interceptor import ExecutionResult
+from mcpkernel.dee.drift import DriftCategory, DriftReport
+from mcpkernel.dee.envelope import ExecutionTrace
+from mcpkernel.dee.snapshot import take_environment_snapshot
+from mcpkernel.proxy.interceptor import ExecutionResult
 
 if TYPE_CHECKING:
-    from mcpguard.dee.trace_store import TraceStore
+    from mcpkernel.dee.trace_store import TraceStore
 
 
 class TestExecutionTrace:

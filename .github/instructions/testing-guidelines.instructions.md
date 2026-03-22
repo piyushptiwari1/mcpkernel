@@ -1,9 +1,9 @@
 ---
-description: "Use when writing or modifying tests for MCPGuard. Covers pytest patterns, async testing, fixtures, and test structure."
+description: "Use when writing or modifying tests for MCPKernel. Covers pytest patterns, async testing, fixtures, and test structure."
 applyTo: "tests/**/*.py"
 ---
 
-# MCPGuard Testing Guidelines
+# MCPKernel Testing Guidelines
 
 ## Framework
 - pytest with `pytest-asyncio` for async tests

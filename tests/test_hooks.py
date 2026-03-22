@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-from mcpguard.policy.engine import PolicyAction, PolicyEngine, PolicyRule
-from mcpguard.proxy.hooks import PolicyHook, TaintHook
-from mcpguard.proxy.interceptor import (
+from mcpkernel.policy.engine import PolicyAction, PolicyEngine, PolicyRule
+from mcpkernel.proxy.hooks import PolicyHook, TaintHook
+from mcpkernel.proxy.interceptor import (
     ExecutionResult,
     InterceptorContext,
     InterceptorPipeline,
     MCPToolCall,
 )
-from mcpguard.taint.tracker import TaintTracker
+from mcpkernel.taint.tracker import TaintTracker
 
 
 def _make_ctx(tool_name: str = "test_tool", arguments: dict | None = None) -> InterceptorContext:
@@ -87,7 +87,7 @@ class TestTaintHook:
 
     @pytest.mark.asyncio
     async def test_detects_tainted_sources(self):
-        from mcpguard.taint.sources import detect_tainted_sources
+        from mcpkernel.taint.sources import detect_tainted_sources
 
         tracker = TaintTracker()
         hook = TaintHook(tracker, detect_fn=detect_tainted_sources)
@@ -143,7 +143,7 @@ class TestPipelineIntegration:
         engine = PolicyEngine()
         tracker = TaintTracker()
 
-        from mcpguard.taint.sources import detect_tainted_sources
+        from mcpkernel.taint.sources import detect_tainted_sources
 
         pipeline.register(PolicyHook(engine))
         pipeline.register(TaintHook(tracker, detect_fn=detect_tainted_sources))

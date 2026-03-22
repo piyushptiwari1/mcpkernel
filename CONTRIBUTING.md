@@ -1,4 +1,4 @@
-# Contributing to mcpguard
+# Contributing to mcpkernel
 
 We welcome contributions! This document covers the development workflow.
 
@@ -6,8 +6,8 @@ We welcome contributions! This document covers the development workflow.
 
 ```bash
 # Clone the repo
-git clone https://github.com/piyushptiwari1/mcpguard.git
-cd mcpguard
+git clone https://github.com/piyushptiwari1/mcpkernel.git
+cd mcpkernel
 
 # Create virtual environment
 python -m venv .venv
@@ -30,7 +30,7 @@ pytest
 pytest tests/unit/ -v
 
 # With coverage
-pytest --cov=mcpguard --cov-report=term-missing
+pytest --cov=mcpkernel --cov-report=term-missing
 
 # Skip tests requiring Docker/eBPF
 pytest -m "not docker and not ebpf"
@@ -46,7 +46,7 @@ ruff check src/ tests/
 ruff format src/ tests/
 
 # Type check
-mypy src/mcpguard/
+mypy src/mcpkernel/
 ```
 
 ## Pull Request Process

@@ -78,7 +78,7 @@ def sample_policy_yaml(tmp_path: Path) -> Path:
 @pytest_asyncio.fixture
 async def trace_db(tmp_path: Path):
     """Provide a temporary trace store."""
-    from mcpguard.dee.trace_store import TraceStore
+    from mcpkernel.dee.trace_store import TraceStore
 
     db_path = str(tmp_path / "test_traces.db")
     store = TraceStore(db_path=db_path)
@@ -90,7 +90,7 @@ async def trace_db(tmp_path: Path):
 @pytest_asyncio.fixture
 async def audit_db(tmp_path: Path):
     """Provide a temporary audit logger."""
-    from mcpguard.audit.logger import AuditLogger
+    from mcpkernel.audit.logger import AuditLogger
 
     db_path = str(tmp_path / "test_audit.db")
     logger = AuditLogger(db_path=db_path)

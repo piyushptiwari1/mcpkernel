@@ -1,6 +1,6 @@
 ---
 name: research-and-improve
-description: 'Multi-step workflow to research latest MCP security techniques, async Python patterns, sandboxing approaches, and implement improvements to MCPGuard. Use when upgrading architecture, adding new security features, or optimizing performance based on latest research.'
+description: 'Multi-step workflow to research latest MCP security techniques, async Python patterns, sandboxing approaches, and implement improvements to MCPKernel. Use when upgrading architecture, adding new security features, or optimizing performance based on latest research.'
 ---
 
 # Research and Improve Workflow
@@ -24,10 +24,10 @@ description: 'Multi-step workflow to research latest MCP security techniques, as
 4. Check for new OWASP ASI guidelines
 
 ### Step 2: Evaluate Applicability
-1. Read current MCPGuard implementation in `src/mcpguard/`
+1. Read current MCPKernel implementation in `src/mcpkernel/`
 2. Compare with researched techniques
 3. Identify improvements that:
-   - Fit MCPGuard's async Python architecture
+   - Fit MCPKernel's async Python architecture
    - Don't break existing APIs
    - Have measurable impact
 
@@ -46,8 +46,8 @@ description: 'Multi-step workflow to research latest MCP security techniques, as
 Return research findings, what was implemented, and validation results.
 
 ## References
-- MCPGuard architecture: `src/mcpguard/`
-- Configuration: `src/mcpguard/config.py`
-- Proxy layer: `src/mcpguard/proxy/`
-- Policy engine: `src/mcpguard/policy/`
-- Taint tracking: `src/mcpguard/taint/`
+- MCPKernel architecture: `src/mcpkernel/`
+- Configuration: `src/mcpkernel/config.py`
+- Proxy layer: `src/mcpkernel/proxy/`
+- Policy engine: `src/mcpkernel/policy/`
+- Taint tracking: `src/mcpkernel/taint/`

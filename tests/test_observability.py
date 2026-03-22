@@ -1,13 +1,13 @@
-"""Tests for mcpguard.observability — metrics, health."""
+"""Tests for mcpkernel.observability — metrics, health."""
 
 from __future__ import annotations
 
 import pytest
 from prometheus_client import CollectorRegistry
 
-from mcpguard.observability.health import ComponentHealth, HealthCheck, HealthStatus
-from mcpguard.observability.metrics import MetricsCollector
-from mcpguard.observability.tracing import TracingSetup, setup_tracing
+from mcpkernel.observability.health import ComponentHealth, HealthCheck, HealthStatus
+from mcpkernel.observability.metrics import MetricsCollector
+from mcpkernel.observability.tracing import TracingSetup, setup_tracing
 
 
 class TestMetrics:
@@ -16,14 +16,14 @@ class TestMetrics:
         metrics = MetricsCollector(registry=registry)
         metrics.tool_calls_total.labels(tool_name="test", outcome="success").inc()
         output = metrics.export_prometheus()
-        assert b"mcpguard_tool_calls_total" in output
+        assert b"mcpkernel_tool_calls_total" in output
 
     def test_build_info(self):
         registry = CollectorRegistry()
         metrics = MetricsCollector(registry=registry)
         metrics.set_build_info("0.1.0", "3.12")
         output = metrics.export_prometheus()
-        assert b"mcpguard_info" in output
+        assert b"mcpkernel_info" in output
 
 
 class TestHealthCheck:
