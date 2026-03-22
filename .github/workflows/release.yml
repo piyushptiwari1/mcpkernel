@@ -61,6 +61,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create ${{ github.ref_name }} \
-            --title "MCPGuard ${{ github.ref_name }}" \
+            --title "MCPKernel ${{ github.ref_name }}" \
             --generate-notes \
             dist/*

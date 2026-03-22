@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from mcpguard.proxy.interceptor import ExecutionResult, InterceptorContext, MCPToolCall
+from mcpkernel.proxy.interceptor import ExecutionResult, InterceptorContext, MCPToolCall
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -40,7 +40,7 @@ class TestSandboxBase:
     """Test sandbox base types and the factory."""
 
     def test_resource_limits_defaults(self):
-        from mcpguard.sandbox.base import ResourceLimits
+        from mcpkernel.sandbox.base import ResourceLimits
 
         rl = ResourceLimits()
         assert rl.cpu_cores == 1.0
@@ -49,7 +49,7 @@ class TestSandboxBase:
         assert rl.network_enabled is False
 
     def test_workspace_defaults(self):
-        from mcpguard.sandbox.base import Workspace
+        from mcpkernel.sandbox.base import Workspace
 
         ws = Workspace(workspace_id="ws-1")
         assert ws.persistent is False
@@ -57,57 +57,57 @@ class TestSandboxBase:
         assert ws.metadata == {}
 
     def test_snapshot_info(self):
-        from mcpguard.sandbox.base import SnapshotInfo
+        from mcpkernel.sandbox.base import SnapshotInfo
 
         snap = SnapshotInfo(snapshot_id="s1", workspace_id="w1", created_at=1000.0)
         assert snap.snapshot_id == "s1"
         assert snap.size_bytes == 0
 
     def test_sandbox_metrics_defaults(self):
-        from mcpguard.sandbox.base import SandboxMetrics
+        from mcpkernel.sandbox.base import SandboxMetrics
 
         m = SandboxMetrics()
         assert m.cpu_used_pct == 0.0
         assert m.cold_start_ms == 0.0
 
     def test_create_backend_docker(self):
-        from mcpguard.config import SandboxConfig
-        from mcpguard.sandbox import create_backend
-        from mcpguard.sandbox.docker_backend import DockerSandbox
+        from mcpkernel.config import SandboxConfig
+        from mcpkernel.sandbox import create_backend
+        from mcpkernel.sandbox.docker_backend import DockerSandbox
 
         cfg = SandboxConfig(backend="docker")
         backend = create_backend(cfg)
         assert isinstance(backend, DockerSandbox)
 
     def test_create_backend_firecracker(self):
-        from mcpguard.config import SandboxConfig
-        from mcpguard.sandbox import create_backend
-        from mcpguard.sandbox.firecracker_backend import FirecrackerSandbox
+        from mcpkernel.config import SandboxConfig
+        from mcpkernel.sandbox import create_backend
+        from mcpkernel.sandbox.firecracker_backend import FirecrackerSandbox
 
         cfg = SandboxConfig(backend="firecracker")
         backend = create_backend(cfg)
         assert isinstance(backend, FirecrackerSandbox)
 
     def test_create_backend_wasm(self):
-        from mcpguard.config import SandboxConfig
-        from mcpguard.sandbox import create_backend
-        from mcpguard.sandbox.wasm_backend import WASMSandbox
+        from mcpkernel.config import SandboxConfig
+        from mcpkernel.sandbox import create_backend
+        from mcpkernel.sandbox.wasm_backend import WASMSandbox
 
         cfg = SandboxConfig(backend="wasm")
         backend = create_backend(cfg)
         assert isinstance(backend, WASMSandbox)
 
     def test_create_backend_microsandbox(self):
-        from mcpguard.config import SandboxConfig
-        from mcpguard.sandbox import create_backend
-        from mcpguard.sandbox.microsandbox_backend import MicrosandboxSandbox
+        from mcpkernel.config import SandboxConfig
+        from mcpkernel.sandbox import create_backend
+        from mcpkernel.sandbox.microsandbox_backend import MicrosandboxSandbox
 
         cfg = SandboxConfig(backend="microsandbox")
         backend = create_backend(cfg)
         assert isinstance(backend, MicrosandboxSandbox)
 
     def test_create_backend_invalid_config_type(self):
-        from mcpguard.sandbox import create_backend
+        from mcpkernel.sandbox import create_backend
 
         with pytest.raises(TypeError, match="Expected SandboxConfig"):
             create_backend({"backend": "docker"})
@@ -117,8 +117,8 @@ class TestDockerBackend:
     """Test DockerSandbox non-execution methods."""
 
     def _make(self):
-        from mcpguard.config import SandboxConfig
-        from mcpguard.sandbox.docker_backend import DockerSandbox
+        from mcpkernel.config import SandboxConfig
+        from mcpkernel.sandbox.docker_backend import DockerSandbox
 
         return DockerSandbox(SandboxConfig())
 
@@ -172,8 +172,8 @@ class TestDockerBackend:
         assert restored.workspace_id == ws.workspace_id
 
     def test_get_client_no_docker(self):
-        from mcpguard.sandbox.docker_backend import DockerSandbox
-        from mcpguard.utils import SandboxError
+        from mcpkernel.sandbox.docker_backend import DockerSandbox
+        from mcpkernel.utils import SandboxError
 
         sb = DockerSandbox(MagicMock())
         with patch.dict("sys.modules", {"docker": None}), pytest.raises((SandboxError, Exception)):
@@ -184,8 +184,8 @@ class TestWASMBackend:
     """Test WASMSandbox non-execution methods."""
 
     def _make(self):
-        from mcpguard.config import SandboxConfig
-        from mcpguard.sandbox.wasm_backend import WASMSandbox
+        from mcpkernel.config import SandboxConfig
+        from mcpkernel.sandbox.wasm_backend import WASMSandbox
 
         return WASMSandbox(SandboxConfig(backend="wasm"))
 
@@ -233,8 +233,8 @@ class TestFirecrackerBackend:
     """Test FirecrackerSandbox non-execution methods."""
 
     def _make(self):
-        from mcpguard.config import SandboxConfig
-        from mcpguard.sandbox.firecracker_backend import FirecrackerSandbox
+        from mcpkernel.config import SandboxConfig
+        from mcpkernel.sandbox.firecracker_backend import FirecrackerSandbox
 
         return FirecrackerSandbox(SandboxConfig(backend="firecracker"))
 
@@ -281,7 +281,7 @@ class TestFirecrackerBackend:
 
     @pytest.mark.asyncio
     async def test_execute_code_no_kernel(self):
-        from mcpguard.utils import SandboxError
+        from mcpkernel.utils import SandboxError
 
         sb = self._make()
         with pytest.raises(SandboxError, match="kernel/rootfs"):
@@ -292,8 +292,8 @@ class TestMicrosandboxBackend:
     """Test MicrosandboxSandbox non-execution methods."""
 
     def _make(self):
-        from mcpguard.config import SandboxConfig
-        from mcpguard.sandbox.microsandbox_backend import MicrosandboxSandbox
+        from mcpkernel.config import SandboxConfig
+        from mcpkernel.sandbox.microsandbox_backend import MicrosandboxSandbox
 
         return MicrosandboxSandbox(SandboxConfig(backend="microsandbox"))
 
@@ -346,62 +346,62 @@ class TestNetworkRedirector:
     """Test NetworkRedirector egress checking."""
 
     def test_blocks_prohibited_port(self):
-        from mcpguard.ebpf.redirector import EgressRule, NetworkRedirector
+        from mcpkernel.ebpf.redirector import EgressRule, NetworkRedirector
 
         r = NetworkRedirector(EgressRule(blocked_ports={25, 445}))
         assert r.check_egress("example.com", 25) is False
 
     def test_allows_normal_port(self):
-        from mcpguard.ebpf.redirector import NetworkRedirector
+        from mcpkernel.ebpf.redirector import NetworkRedirector
 
         r = NetworkRedirector()
         assert r.check_egress("example.com", 443) is True
 
     def test_allows_dns_when_enabled(self):
-        from mcpguard.ebpf.redirector import EgressRule, NetworkRedirector
+        from mcpkernel.ebpf.redirector import EgressRule, NetworkRedirector
 
         r = NetworkRedirector(EgressRule(allow_dns=True))
         assert r.check_egress("8.8.8.8", 53) is True
 
     def test_blocks_dns_when_disabled(self):
-        from mcpguard.ebpf.redirector import EgressRule, NetworkRedirector
+        from mcpkernel.ebpf.redirector import EgressRule, NetworkRedirector
 
         r = NetworkRedirector(EgressRule(allow_dns=False, blocked_ports=set()))
         # When DNS is disabled and no domain allowlist, it should pass
         assert r.check_egress("8.8.8.8", 53) is True
 
     def test_domain_allowlist_blocks_unallowed(self):
-        from mcpguard.ebpf.redirector import EgressRule, NetworkRedirector
+        from mcpkernel.ebpf.redirector import EgressRule, NetworkRedirector
 
         r = NetworkRedirector(EgressRule(allowed_domains={"safe.com"}))
         assert r.check_egress("evil.com", 443) is False
 
     def test_domain_allowlist_allows_listed(self):
-        from mcpguard.ebpf.redirector import EgressRule, NetworkRedirector
+        from mcpkernel.ebpf.redirector import EgressRule, NetworkRedirector
 
         r = NetworkRedirector(EgressRule(allowed_domains={"api.example.com"}))
         assert r.check_egress("api.example.com", 443) is True
 
     def test_domain_allowlist_allows_subdomain(self):
-        from mcpguard.ebpf.redirector import EgressRule, NetworkRedirector
+        from mcpkernel.ebpf.redirector import EgressRule, NetworkRedirector
 
         r = NetworkRedirector(EgressRule(allowed_domains={"example.com"}))
         assert r.check_egress("sub.example.com", 443) is True
 
     def test_cidr_allowlist_blocks_unallowed_ip(self):
-        from mcpguard.ebpf.redirector import EgressRule, NetworkRedirector
+        from mcpkernel.ebpf.redirector import EgressRule, NetworkRedirector
 
         r = NetworkRedirector(EgressRule(allowed_cidrs=["10.0.0.0/8"]))
         assert r.check_egress("192.168.1.1", 80) is False
 
     def test_cidr_allowlist_allows_in_range(self):
-        from mcpguard.ebpf.redirector import EgressRule, NetworkRedirector
+        from mcpkernel.ebpf.redirector import EgressRule, NetworkRedirector
 
         r = NetworkRedirector(EgressRule(allowed_cidrs=["10.0.0.0/8"]))
         assert r.check_egress("10.1.2.3", 80) is True
 
     def test_update_rules(self):
-        from mcpguard.ebpf.redirector import EgressRule, NetworkRedirector
+        from mcpkernel.ebpf.redirector import EgressRule, NetworkRedirector
 
         r = NetworkRedirector()
         new_rules = EgressRule(allowed_domains={"new.com"}, blocked_ports={9999})
@@ -414,27 +414,27 @@ class TestEBPFProbe:
     """Test EBPFProbe in unprivileged mode."""
 
     def test_probe_unavailable_without_root(self):
-        from mcpguard.ebpf.probe import EBPFProbe
+        from mcpkernel.ebpf.probe import EBPFProbe
 
         probe = EBPFProbe()
         # Not running as root in tests
         assert probe.available is False
 
     def test_events_initially_empty(self):
-        from mcpguard.ebpf.probe import EBPFProbe
+        from mcpkernel.ebpf.probe import EBPFProbe
 
         probe = EBPFProbe()
         assert probe.events == []
 
     def test_clear_events(self):
-        from mcpguard.ebpf.probe import EBPFProbe
+        from mcpkernel.ebpf.probe import EBPFProbe
 
         probe = EBPFProbe()
         probe.clear_events()
         assert probe.events == []
 
     def test_on_event_callback(self):
-        from mcpguard.ebpf.probe import EBPFProbe
+        from mcpkernel.ebpf.probe import EBPFProbe
 
         probe = EBPFProbe()
         cb = MagicMock()
@@ -443,14 +443,14 @@ class TestEBPFProbe:
 
     @pytest.mark.asyncio
     async def test_start_noop_when_unavailable(self):
-        from mcpguard.ebpf.probe import EBPFProbe
+        from mcpkernel.ebpf.probe import EBPFProbe
 
         probe = EBPFProbe()
         await probe.start()  # Should not raise
 
     @pytest.mark.asyncio
     async def test_stop_noop(self):
-        from mcpguard.ebpf.probe import EBPFProbe
+        from mcpkernel.ebpf.probe import EBPFProbe
 
         probe = EBPFProbe()
         await probe.stop()
@@ -460,7 +460,7 @@ class TestProbeEvent:
     """Test ProbeEvent data structure."""
 
     def test_probe_event_creation(self):
-        from mcpguard.ebpf.probe import ProbeEvent, SyscallType
+        from mcpkernel.ebpf.probe import ProbeEvent, SyscallType
 
         evt = ProbeEvent(syscall=SyscallType.CONNECT, pid=1234, comm="python3", timestamp=time.time())
         assert evt.syscall == SyscallType.CONNECT
@@ -473,8 +473,8 @@ class TestEBPFHook:
 
     @pytest.mark.asyncio
     async def test_allows_non_url_arguments(self):
-        from mcpguard.ebpf.redirector import NetworkRedirector
-        from mcpguard.proxy.hooks import EBPFHook
+        from mcpkernel.ebpf.redirector import NetworkRedirector
+        from mcpkernel.proxy.hooks import EBPFHook
 
         hook = EBPFHook(NetworkRedirector())
         ctx = _make_ctx(arguments={"code": "print('hello')", "count": "5"})
@@ -483,8 +483,8 @@ class TestEBPFHook:
 
     @pytest.mark.asyncio
     async def test_blocks_prohibited_url(self):
-        from mcpguard.ebpf.redirector import EgressRule, NetworkRedirector
-        from mcpguard.proxy.hooks import EBPFHook
+        from mcpkernel.ebpf.redirector import EgressRule, NetworkRedirector
+        from mcpkernel.proxy.hooks import EBPFHook
 
         redirector = NetworkRedirector(EgressRule(allowed_domains={"safe.com"}))
         hook = EBPFHook(redirector)
@@ -495,8 +495,8 @@ class TestEBPFHook:
 
     @pytest.mark.asyncio
     async def test_allows_safe_url(self):
-        from mcpguard.ebpf.redirector import EgressRule, NetworkRedirector
-        from mcpguard.proxy.hooks import EBPFHook
+        from mcpkernel.ebpf.redirector import EgressRule, NetworkRedirector
+        from mcpkernel.proxy.hooks import EBPFHook
 
         redirector = NetworkRedirector(EgressRule(allowed_domains={"safe.com"}))
         hook = EBPFHook(redirector)
@@ -506,8 +506,8 @@ class TestEBPFHook:
 
     @pytest.mark.asyncio
     async def test_log_with_probe(self):
-        from mcpguard.ebpf.redirector import NetworkRedirector
-        from mcpguard.proxy.hooks import EBPFHook
+        from mcpkernel.ebpf.redirector import NetworkRedirector
+        from mcpkernel.proxy.hooks import EBPFHook
 
         mock_probe = MagicMock()
         mock_probe.events = [MagicMock()]
@@ -519,8 +519,8 @@ class TestEBPFHook:
 
     @pytest.mark.asyncio
     async def test_log_without_probe(self):
-        from mcpguard.ebpf.redirector import NetworkRedirector
-        from mcpguard.proxy.hooks import EBPFHook
+        from mcpkernel.ebpf.redirector import NetworkRedirector
+        from mcpkernel.proxy.hooks import EBPFHook
 
         hook = EBPFHook(NetworkRedirector())
         ctx = _make_ctx()
@@ -531,21 +531,21 @@ class TestExtractHostPort:
     """Test the _extract_host_port helper."""
 
     def test_https_url(self):
-        from mcpguard.proxy.hooks import _extract_host_port
+        from mcpkernel.proxy.hooks import _extract_host_port
 
         host, port = _extract_host_port("https://example.com/path")
         assert host == "example.com"
         assert port == 443
 
     def test_http_url(self):
-        from mcpguard.proxy.hooks import _extract_host_port
+        from mcpkernel.proxy.hooks import _extract_host_port
 
         host, port = _extract_host_port("http://example.com:8080/path")
         assert host == "example.com"
         assert port == 8080
 
     def test_not_a_url(self):
-        from mcpguard.proxy.hooks import _extract_host_port
+        from mcpkernel.proxy.hooks import _extract_host_port
 
         host, port = _extract_host_port("just some text")
         assert host == ""
@@ -562,7 +562,7 @@ class TestWrapExecution:
 
     @pytest.mark.asyncio
     async def test_wraps_execution_no_sign(self):
-        from mcpguard.dee.envelope import wrap_execution
+        from mcpkernel.dee.envelope import wrap_execution
 
         call = MCPToolCall(
             request_id="t1",
@@ -585,7 +585,7 @@ class TestWrapExecution:
 
     @pytest.mark.asyncio
     async def test_wraps_execution_with_agent_id(self):
-        from mcpguard.dee.envelope import wrap_execution
+        from mcpkernel.dee.envelope import wrap_execution
 
         call = MCPToolCall(
             request_id="t2",
@@ -607,8 +607,8 @@ class TestReplay:
 
     @pytest.mark.asyncio
     async def test_replay_nonexistent_trace(self, trace_db):
-        from mcpguard.dee.replay import replay
-        from mcpguard.utils import ReplayError
+        from mcpkernel.dee.replay import replay
+        from mcpkernel.utils import ReplayError
 
         async def fake_exec(c: Any) -> ExecutionResult:
             return ExecutionResult(content=[{"type": "text", "text": "ok"}])
@@ -618,8 +618,8 @@ class TestReplay:
 
     @pytest.mark.asyncio
     async def test_replay_existing_trace(self, trace_db):
-        from mcpguard.dee.envelope import wrap_execution
-        from mcpguard.dee.replay import replay, validate_replay_integrity
+        from mcpkernel.dee.envelope import wrap_execution
+        from mcpkernel.dee.replay import replay, validate_replay_integrity
 
         call = MCPToolCall(
             request_id="r1",
@@ -644,8 +644,8 @@ class TestReplay:
 
     @pytest.mark.asyncio
     async def test_validate_replay_integrity_not_found(self, trace_db):
-        from mcpguard.dee.replay import validate_replay_integrity
-        from mcpguard.utils import ReplayError
+        from mcpkernel.dee.replay import validate_replay_integrity
+        from mcpkernel.utils import ReplayError
 
         fake_trace = MagicMock()
         fake_trace.output_hash = "abc"
@@ -657,18 +657,18 @@ class TestDriftDetection:
     """Test drift classification helpers."""
 
     def test_classify_random(self):
-        from mcpguard.dee.drift import _classify_nondeterminism
+        from mcpkernel.dee.drift import _classify_nondeterminism
 
         result = _classify_nondeterminism(
             {"result_json": '{"output": "random value uuid"}'},
             ["h1", "h2"],
         )
-        from mcpguard.dee.drift import DriftCategory
+        from mcpkernel.dee.drift import DriftCategory
 
         assert result == DriftCategory.RANDOM_SEED
 
     def test_classify_clock(self):
-        from mcpguard.dee.drift import DriftCategory, _classify_nondeterminism
+        from mcpkernel.dee.drift import DriftCategory, _classify_nondeterminism
 
         result = _classify_nondeterminism(
             {"result_json": '{"output": "timestamp now"}'},
@@ -677,7 +677,7 @@ class TestDriftDetection:
         assert result == DriftCategory.CLOCK_DEPENDENCY
 
     def test_classify_network(self):
-        from mcpguard.dee.drift import DriftCategory, _classify_nondeterminism
+        from mcpkernel.dee.drift import DriftCategory, _classify_nondeterminism
 
         result = _classify_nondeterminism(
             {"result_json": '{"output": "http request"}'},
@@ -686,7 +686,7 @@ class TestDriftDetection:
         assert result == DriftCategory.NETWORK_CALL
 
     def test_classify_filesystem(self):
-        from mcpguard.dee.drift import DriftCategory, _classify_nondeterminism
+        from mcpkernel.dee.drift import DriftCategory, _classify_nondeterminism
 
         result = _classify_nondeterminism(
             {"result_json": '{"output": "file read path"}'},
@@ -695,7 +695,7 @@ class TestDriftDetection:
         assert result == DriftCategory.FILESYSTEM_CHANGE
 
     def test_classify_unknown(self):
-        from mcpguard.dee.drift import DriftCategory, _classify_nondeterminism
+        from mcpkernel.dee.drift import DriftCategory, _classify_nondeterminism
 
         result = _classify_nondeterminism(
             {"result_json": '{"output": "nothing special here"}'},
@@ -704,7 +704,7 @@ class TestDriftDetection:
         assert result == DriftCategory.UNKNOWN
 
     def test_drift_report_fields(self):
-        from mcpguard.dee.drift import DriftCategory, DriftReport
+        from mcpkernel.dee.drift import DriftCategory, DriftReport
 
         report = DriftReport(
             original_trace_id="t1",
@@ -721,14 +721,14 @@ class TestEnvironmentSnapshot:
     """Test DEE environment snapshot."""
 
     def test_snapshot_without_workspace(self):
-        from mcpguard.dee.snapshot import take_environment_snapshot
+        from mcpkernel.dee.snapshot import take_environment_snapshot
 
         h = take_environment_snapshot(workspace_path=None)
         assert isinstance(h, str)
         assert len(h) == 64  # SHA-256 hex
 
     def test_snapshot_with_workspace(self, tmp_path: Path):
-        from mcpguard.dee.snapshot import take_environment_snapshot
+        from mcpkernel.dee.snapshot import take_environment_snapshot
 
         (tmp_path / "file.txt").write_text("hello")
         h = take_environment_snapshot(workspace_path=tmp_path)
@@ -736,13 +736,13 @@ class TestEnvironmentSnapshot:
         assert len(h) == 64
 
     def test_snapshot_without_env_vars(self):
-        from mcpguard.dee.snapshot import take_environment_snapshot
+        from mcpkernel.dee.snapshot import take_environment_snapshot
 
         h = take_environment_snapshot(include_env_vars=False)
         assert len(h) == 64
 
     def test_snapshot_deterministic(self, tmp_path: Path):
-        from mcpguard.dee.snapshot import take_environment_snapshot
+        from mcpkernel.dee.snapshot import take_environment_snapshot
 
         (tmp_path / "a.txt").write_text("content")
         h1 = take_environment_snapshot(workspace_path=tmp_path, include_env_vars=False)
@@ -761,17 +761,17 @@ class TestCLI:
     def test_version(self):
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         runner = CliRunner()
         result = runner.invoke(app, ["version"])
         assert result.exit_code == 0
-        assert "mcpguard" in result.output
+        assert "mcpkernel" in result.output
 
     def test_validate_policy_valid(self, tmp_path: Path):
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         policy = tmp_path / "test.yaml"
         policy.write_text("rules:\n  - id: T1\n    name: Test\n    action: deny\n    tool_patterns: ['.*']\n")
@@ -783,7 +783,7 @@ class TestCLI:
     def test_validate_policy_invalid(self, tmp_path: Path):
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         policy = tmp_path / "bad.yaml"
         policy.write_text("no_rules_key: true\n")
@@ -794,7 +794,7 @@ class TestCLI:
     def test_validate_policy_directory(self, tmp_path: Path):
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         policy = tmp_path / "rules.yaml"
         policy.write_text("rules:\n  - id: D1\n    name: Dir test\n    action: allow\n")
@@ -805,7 +805,7 @@ class TestCLI:
     def test_scan_missing_file(self):
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         runner = CliRunner()
         result = runner.invoke(app, ["scan", "/nonexistent_file.py"])
@@ -814,7 +814,7 @@ class TestCLI:
     def test_scan_clean_file(self, tmp_path: Path):
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         code_file = tmp_path / "safe.py"
         code_file.write_text("x = 1 + 2\nprint(x)\n")
@@ -826,7 +826,7 @@ class TestCLI:
     def test_scan_dangerous_file(self, tmp_path: Path):
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         code_file = tmp_path / "dangerous.py"
         code_file.write_text("eval(input())\n")
@@ -837,7 +837,7 @@ class TestCLI:
     def test_config_show(self):
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         runner = CliRunner()
         result = runner.invoke(app, ["config-show"])
@@ -849,18 +849,18 @@ class TestCLI:
     def test_init_creates_structure(self, tmp_path: Path):
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         runner = CliRunner()
         result = runner.invoke(app, ["init", str(tmp_path)])
         assert result.exit_code == 0
-        assert (tmp_path / ".mcpguard" / "config.yaml").exists()
-        assert (tmp_path / ".mcpguard" / "policies").is_dir()
+        assert (tmp_path / ".mcpkernel" / "config.yaml").exists()
+        assert (tmp_path / ".mcpkernel" / "policies").is_dir()
 
     def test_init_idempotent(self, tmp_path: Path):
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         runner = CliRunner()
         runner.invoke(app, ["init", str(tmp_path)])
@@ -870,7 +870,7 @@ class TestCLI:
     def test_trace_list_empty(self, tmp_path: Path):
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         db = str(tmp_path / "empty_traces.db")
         runner = CliRunner()
@@ -881,7 +881,7 @@ class TestCLI:
     def test_trace_export_not_found(self, tmp_path: Path):
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         db = str(tmp_path / "traces.db")
         runner = CliRunner()
@@ -891,7 +891,7 @@ class TestCLI:
     def test_audit_query_empty(self, tmp_path: Path):
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         db = str(tmp_path / "audit.db")
         runner = CliRunner()
@@ -909,16 +909,16 @@ class TestProxyServer:
     """Test proxy server app factory and routes."""
 
     def test_create_proxy_app(self):
-        from mcpguard.proxy.server import create_proxy_app
+        from mcpkernel.proxy.server import create_proxy_app
 
         app = create_proxy_app()
-        assert app.title == "mcpguard"
+        assert app.title == "mcpkernel"
 
     @pytest.mark.asyncio
     async def test_health_endpoint(self):
         from httpx import ASGITransport, AsyncClient
 
-        from mcpguard.proxy.server import create_proxy_app
+        from mcpkernel.proxy.server import create_proxy_app
 
         app = create_proxy_app()
         transport = ASGITransport(app=app)
@@ -937,14 +937,14 @@ class TestTracingSetup:
     """Test observability tracing setup."""
 
     def test_tracing_disabled(self):
-        from mcpguard.observability.tracing import TracingSetup, setup_tracing
+        from mcpkernel.observability.tracing import TracingSetup, setup_tracing
 
         cfg = TracingSetup(enabled=False)
         result = setup_tracing(cfg)
         assert result is None
 
     def test_tracing_no_otel(self):
-        from mcpguard.observability.tracing import TracingSetup, setup_tracing
+        from mcpkernel.observability.tracing import TracingSetup, setup_tracing
 
         # OTEL is installed in our env, but test with no endpoint
         cfg = TracingSetup(enabled=True, otlp_endpoint="")
@@ -953,14 +953,14 @@ class TestTracingSetup:
         assert result is not None
 
     def test_tracing_with_grpc_endpoint(self):
-        from mcpguard.observability.tracing import TracingSetup, setup_tracing
+        from mcpkernel.observability.tracing import TracingSetup, setup_tracing
 
         cfg = TracingSetup(enabled=True, otlp_endpoint="http://localhost:4317", otlp_protocol="grpc")
         result = setup_tracing(cfg)
         assert result is not None
 
     def test_tracing_with_http_endpoint(self):
-        from mcpguard.observability.tracing import TracingSetup, setup_tracing
+        from mcpkernel.observability.tracing import TracingSetup, setup_tracing
 
         cfg = TracingSetup(enabled=True, otlp_endpoint="http://localhost:4318", otlp_protocol="http")
         result = setup_tracing(cfg)
@@ -978,7 +978,7 @@ class TestConfigEdgeCases:
     """Test configuration edge cases for coverage."""
 
     def test_load_config_with_yaml(self, tmp_path: Path):
-        from mcpguard.config import load_config
+        from mcpkernel.config import load_config
 
         cfg_file = tmp_path / "config.yaml"
         cfg_file.write_text("proxy:\n  host: 0.0.0.0\n  port: 9000\nsandbox:\n  backend: wasm\n")
@@ -987,28 +987,28 @@ class TestConfigEdgeCases:
         assert settings.proxy.port == 9000
 
     def test_load_config_nonexistent_raises(self, tmp_path: Path):
-        from mcpguard.config import load_config
-        from mcpguard.utils import ConfigError
+        from mcpkernel.config import load_config
+        from mcpkernel.utils import ConfigError
 
         with pytest.raises(ConfigError, match="not found"):
             load_config(config_path=tmp_path / "nope.yaml")
 
     def test_get_config_singleton(self):
-        from mcpguard.config import get_config
+        from mcpkernel.config import get_config
 
         cfg1 = get_config()
         cfg2 = get_config()
         assert cfg1 is cfg2
 
     def test_deep_merge_invalid_section(self):
-        from mcpguard.config import MCPGuardSettings, _deep_merge
+        from mcpkernel.config import MCPKernelSettings, _deep_merge
 
-        settings = MCPGuardSettings()
+        settings = MCPKernelSettings()
         _deep_merge(settings, {"nonexistent_section": {"key": "val"}})
         # Should not raise, just skip
 
     def test_yaml_non_dict(self, tmp_path: Path):
-        from mcpguard.config import _load_yaml
+        from mcpkernel.config import _load_yaml
 
         f = tmp_path / "non_dict.yaml"
         f.write_text("just a string")
@@ -1024,26 +1024,26 @@ class TestTransformHelpers:
     """Test proxy transform utilities."""
 
     def test_normalize_from_mcp_success(self):
-        from mcpguard.proxy.transform import normalize_from_mcp
+        from mcpkernel.proxy.transform import normalize_from_mcp
 
         result = normalize_from_mcp({"result": {"content": [{"type": "text"}], "isError": False}})
         assert result["ok"] is True
 
     def test_normalize_from_mcp_error(self):
-        from mcpguard.proxy.transform import normalize_from_mcp
+        from mcpkernel.proxy.transform import normalize_from_mcp
 
         result = normalize_from_mcp({"error": {"code": -32000, "message": "fail"}})
         assert result["ok"] is False
 
     def test_normalize_to_mcp_flat_body(self):
-        from mcpguard.proxy.transform import normalize_to_mcp
+        from mcpkernel.proxy.transform import normalize_to_mcp
 
         result = normalize_to_mcp({"tool": "run", "arguments": {"x": 1}})
         assert result["method"] == "tools/call"
         assert result["params"]["name"] == "run"
 
     def test_normalize_to_mcp_already_jsonrpc(self):
-        from mcpguard.proxy.transform import normalize_to_mcp
+        from mcpkernel.proxy.transform import normalize_to_mcp
 
         raw = {"jsonrpc": "2.0", "id": 1, "method": "tools/call"}
         assert normalize_to_mcp(raw) is raw
@@ -1058,7 +1058,7 @@ class TestContextReducerEdgeCases:
     """Test context reducer edge cases."""
 
     def test_reduce_small_context(self):
-        from mcpguard.context.reducer import ContextReducer
+        from mcpkernel.context.reducer import ContextReducer
 
         reducer = ContextReducer()
         result = reducer.reduce({})
@@ -1066,7 +1066,7 @@ class TestContextReducerEdgeCases:
         assert result.pruned_fields == []
 
     def test_reduce_with_query_terms(self):
-        from mcpguard.context.reducer import ContextReducer
+        from mcpkernel.context.reducer import ContextReducer
 
         reducer = ContextReducer(max_tokens=50)
         ctx = {
@@ -1083,8 +1083,8 @@ class TestAuditHookIntegration:
 
     @pytest.mark.asyncio
     async def test_audit_hook_logs_success(self, audit_db):
-        from mcpguard.proxy.auth import AuthCredentials
-        from mcpguard.proxy.hooks import AuditHook
+        from mcpkernel.proxy.auth import AuthCredentials
+        from mcpkernel.proxy.hooks import AuditHook
 
         hook = AuditHook(audit_db)
         ctx = _make_ctx(tool_name="safe_tool")
@@ -1098,8 +1098,8 @@ class TestAuditHookIntegration:
 
     @pytest.mark.asyncio
     async def test_audit_hook_logs_blocked(self, audit_db):
-        from mcpguard.proxy.auth import AuthCredentials
-        from mcpguard.proxy.hooks import AuditHook
+        from mcpkernel.proxy.auth import AuthCredentials
+        from mcpkernel.proxy.hooks import AuditHook
 
         hook = AuditHook(audit_db)
         ctx = _make_ctx(tool_name="blocked_tool")
@@ -1117,7 +1117,7 @@ class TestDEEHookIntegration:
 
     @pytest.mark.asyncio
     async def test_dee_hook_stores_trace(self, trace_db):
-        from mcpguard.proxy.hooks import DEEHook
+        from mcpkernel.proxy.hooks import DEEHook
 
         hook = DEEHook(trace_db)
         ctx = _make_ctx(tool_name="traced_fn")
@@ -1132,7 +1132,7 @@ class TestDEEHookIntegration:
 
     @pytest.mark.asyncio
     async def test_dee_hook_skips_errors(self, trace_db):
-        from mcpguard.proxy.hooks import DEEHook
+        from mcpkernel.proxy.hooks import DEEHook
 
         hook = DEEHook(trace_db)
         ctx = _make_ctx()
@@ -1142,7 +1142,7 @@ class TestDEEHookIntegration:
 
     @pytest.mark.asyncio
     async def test_dee_hook_skips_none_result(self, trace_db):
-        from mcpguard.proxy.hooks import DEEHook
+        from mcpkernel.proxy.hooks import DEEHook
 
         hook = DEEHook(trace_db)
         ctx = _make_ctx()
@@ -1155,7 +1155,7 @@ class TestTraceStoreEdgeCases:
 
     @pytest.mark.asyncio
     async def test_list_traces_with_filters(self, trace_db):
-        from mcpguard.dee.envelope import ExecutionTrace
+        from mcpkernel.dee.envelope import ExecutionTrace
 
         trace = ExecutionTrace(
             trace_id="tr_filter_test",
@@ -1186,7 +1186,7 @@ class TestTraceStoreEdgeCases:
 
     @pytest.mark.asyncio
     async def test_export_trace_success(self, trace_db):
-        from mcpguard.dee.envelope import ExecutionTrace
+        from mcpkernel.dee.envelope import ExecutionTrace
 
         trace = ExecutionTrace(
             trace_id="tr_export_test",
@@ -1210,7 +1210,7 @@ class TestPolicyEngineEdgeCases:
     """Additional policy engine edge cases."""
 
     def test_evaluate_with_taint_labels(self):
-        from mcpguard.policy.engine import PolicyAction, PolicyEngine, PolicyRule
+        from mcpkernel.policy.engine import PolicyAction, PolicyEngine, PolicyRule
 
         engine = PolicyEngine()
         engine.add_rule(
@@ -1225,7 +1225,7 @@ class TestPolicyEngineEdgeCases:
         assert not decision.allowed
 
     def test_evaluate_with_owasp_id(self):
-        from mcpguard.policy.engine import PolicyAction, PolicyEngine, PolicyRule
+        from mcpkernel.policy.engine import PolicyAction, PolicyEngine, PolicyRule
 
         engine = PolicyEngine()
         engine.add_rule(
@@ -1247,21 +1247,21 @@ class TestMetricsCollector:
     def test_collector_creation(self):
         from prometheus_client import CollectorRegistry
 
-        from mcpguard.observability.metrics import MetricsCollector
+        from mcpkernel.observability.metrics import MetricsCollector
 
         reg = CollectorRegistry()
         collector = MetricsCollector(registry=reg)
         collector.tool_calls_total.labels(tool_name="test", outcome="success").inc()
         output = collector.export_prometheus()
-        assert b"mcpguard_tool_calls_total" in output
+        assert b"mcpkernel_tool_calls_total" in output
 
     def test_set_build_info(self):
         from prometheus_client import CollectorRegistry
 
-        from mcpguard.observability.metrics import MetricsCollector
+        from mcpkernel.observability.metrics import MetricsCollector
 
         reg = CollectorRegistry()
         collector = MetricsCollector(registry=reg)
         collector.set_build_info(version="0.1.0", python_version="3.13")
         output = collector.export_prometheus()
-        assert b"mcpguard" in output
+        assert b"mcpkernel" in output

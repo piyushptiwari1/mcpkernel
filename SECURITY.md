@@ -8,7 +8,7 @@
 
 ## Reporting a Vulnerability
 
-MCPGuard is a security-focused project, and we take vulnerability reports seriously.
+MCPKernel is a security-focused project, and we take vulnerability reports seriously.
 
 **DO NOT open a public GitHub issue for security vulnerabilities.**
 
@@ -16,7 +16,7 @@ Instead, please report vulnerabilities through one of these channels:
 
 ### GitHub Security Advisories (Preferred)
 
-1. Go to [Security Advisories](https://github.com/piyushptiwari1/mcpguard/security/advisories/new)
+1. Go to [Security Advisories](https://github.com/piyushptiwari1/mcpkernel/security/advisories/new)
 2. Click "Report a vulnerability"
 3. Fill in the details
 

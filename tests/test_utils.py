@@ -1,14 +1,14 @@
-"""Tests for mcpguard.utils — hashing, exceptions, logging."""
+"""Tests for mcpkernel.utils — hashing, exceptions, logging."""
 
 import hashlib
 
 import pytest
 
-from mcpguard.utils import (
+from mcpkernel.utils import (
     AuthError,
     ConfigError,
     DriftDetected,
-    MCPGuardError,
+    MCPKernelError,
     PolicyViolation,
     ReplayError,
     SandboxError,
@@ -26,11 +26,11 @@ from mcpguard.utils import (
 
 class TestExceptionHierarchy:
     def test_base_exception(self):
-        with pytest.raises(MCPGuardError):
-            raise MCPGuardError("test")
+        with pytest.raises(MCPKernelError):
+            raise MCPKernelError("test")
 
     def test_config_error(self):
-        with pytest.raises(MCPGuardError):
+        with pytest.raises(MCPKernelError):
             raise ConfigError("bad config")
 
     def test_auth_error(self):
@@ -39,12 +39,12 @@ class TestExceptionHierarchy:
 
     def test_policy_violation(self):
         err = PolicyViolation(rule_id="TEST-001", message="blocked by rule X")
-        assert isinstance(err, MCPGuardError)
+        assert isinstance(err, MCPKernelError)
         assert err.rule_id == "TEST-001"
 
     def test_sandbox_error(self):
         err = SandboxError("timeout")
-        assert isinstance(err, MCPGuardError)
+        assert isinstance(err, MCPKernelError)
 
     def test_taint_violation_fields(self):
         err = TaintViolation(
@@ -57,11 +57,11 @@ class TestExceptionHierarchy:
         assert err.sink_type == "http_post"
 
     def test_drift_detected(self):
-        with pytest.raises(MCPGuardError):
+        with pytest.raises(MCPKernelError):
             raise DriftDetected("output changed")
 
     def test_replay_error(self):
-        with pytest.raises(MCPGuardError):
+        with pytest.raises(MCPKernelError):
             raise ReplayError("cannot replay")
 
 

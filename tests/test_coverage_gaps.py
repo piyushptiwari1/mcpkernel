@@ -6,20 +6,20 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from mcpguard.audit.exporter import AuditExportFormat, export_audit_logs
-from mcpguard.audit.logger import AuditEntry, AuditLogger
-from mcpguard.policy.engine import PolicyAction, PolicyEngine, PolicyRule
-from mcpguard.policy.loader import _parse_rule, load_policy_file
-from mcpguard.proxy.interceptor import InterceptorPipeline, PluginHook
-from mcpguard.proxy.rate_limit import InMemoryRateLimiter
-from mcpguard.taint.sinks import (
+from mcpkernel.audit.exporter import AuditExportFormat, export_audit_logs
+from mcpkernel.audit.logger import AuditEntry, AuditLogger
+from mcpkernel.policy.engine import PolicyAction, PolicyEngine, PolicyRule
+from mcpkernel.policy.loader import _parse_rule, load_policy_file
+from mcpkernel.proxy.interceptor import InterceptorPipeline, PluginHook
+from mcpkernel.proxy.rate_limit import InMemoryRateLimiter
+from mcpkernel.taint.sinks import (
     SinkAction,
     SinkDefinition,
     check_sink_operation,
 )
-from mcpguard.taint.sources import detect_tainted_sources
-from mcpguard.taint.tracker import TaintedValue, TaintLabel, TaintTracker
-from mcpguard.utils import ConfigError, TaintViolation
+from mcpkernel.taint.sources import detect_tainted_sources
+from mcpkernel.taint.tracker import TaintedValue, TaintLabel, TaintTracker
+from mcpkernel.utils import ConfigError, TaintViolation
 
 if TYPE_CHECKING:
     from pathlib import Path

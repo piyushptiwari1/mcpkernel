@@ -1,4 +1,4 @@
-"""Tests for mcpguard.policy — engine, loader."""
+"""Tests for mcpkernel.policy — engine, loader."""
 
 from __future__ import annotations
 
@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from mcpguard.policy.engine import PolicyAction, PolicyEngine, PolicyRule
-from mcpguard.policy.loader import load_policy_dir, load_policy_file
-from mcpguard.utils import ConfigError
+from mcpkernel.policy.engine import PolicyAction, PolicyEngine, PolicyRule
+from mcpkernel.policy.loader import load_policy_dir, load_policy_file
+from mcpkernel.utils import ConfigError
 
 if TYPE_CHECKING:
     from pathlib import Path

@@ -1,9 +1,9 @@
 ---
-description: "Use when working with MCPGuard YAML policy files. Covers policy syntax, rule structure, OWASP ASI mappings, and best practices for writing security policies."
+description: "Use when working with MCPKernel YAML policy files. Covers policy syntax, rule structure, OWASP ASI mappings, and best practices for writing security policies."
 applyTo: "policies/**/*.yaml"
 ---
 
-# MCPGuard Policy Writing Guide
+# MCPKernel Policy Writing Guide
 
 ## Policy Structure
 ```yaml

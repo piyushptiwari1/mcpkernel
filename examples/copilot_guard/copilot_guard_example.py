@@ -1,6 +1,6 @@
-"""Example: MCPGuard as a Copilot Guard.
+"""Example: MCPKernel as a Copilot Guard.
 
-Demonstrates using MCPGuard to intercept and enforce policy on
+Demonstrates using MCPKernel to intercept and enforce policy on
 any MCP-compatible AI coding assistant (GitHub Copilot, Cursor, etc.)
 by running as an intermediary proxy.
 """
@@ -8,7 +8,7 @@ by running as an intermediary proxy.
 import asyncio
 import httpx
 
-MCPGUARD_URL = "http://localhost:8000/mcp"
+MCPKERNEL_URL = "http://localhost:8000/mcp"
 
 
 async def copilot_guard_example():
@@ -16,7 +16,7 @@ async def copilot_guard_example():
 
     async with httpx.AsyncClient(timeout=30) as client:
         # Safe operation: reading allowed files
-        resp = await client.post(MCPGUARD_URL, json={
+        resp = await client.post(MCPKERNEL_URL, json={
             "jsonrpc": "2.0",
             "id": 1,
             "method": "tools/call",
@@ -28,7 +28,7 @@ async def copilot_guard_example():
         print("✓ Allowed:", resp.json())
 
         # Dangerous: trying to run arbitrary shell commands
-        resp = await client.post(MCPGUARD_URL, json={
+        resp = await client.post(MCPKERNEL_URL, json={
             "jsonrpc": "2.0",
             "id": 2,
             "method": "tools/call",
@@ -40,7 +40,7 @@ async def copilot_guard_example():
         print("✗ Blocked:", resp.json())
 
         # Taint detection: PII in tool arguments
-        resp = await client.post(MCPGUARD_URL, json={
+        resp = await client.post(MCPKERNEL_URL, json={
             "jsonrpc": "2.0",
             "id": 3,
             "method": "tools/call",

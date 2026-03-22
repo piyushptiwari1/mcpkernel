@@ -1,22 +1,33 @@
-# MCPGuard — Security Gateway for AI Agent Tool Calls
+# MCPKernel — The Security Kernel for AI Agents
 
-> **Open-source MCP/A2A proxy that policy-enforces, taint-tracks, sandboxes, and audit-logs every AI agent tool call. OWASP ASI 2026 compliant.**
+> **Open-source MCP/A2A security gateway — policy enforcement, taint tracking, sandboxed execution, deterministic envelopes, and Sigstore audit for every AI agent tool call. OWASP ASI 2026 compliant.**
 
-[![CI](https://github.com/piyushptiwari1/mcpguard/actions/workflows/ci.yml/badge.svg)](https://github.com/piyushptiwari1/mcpguard/actions/workflows/ci.yml)
+[![CI](https://github.com/piyushptiwari1/mcpkernel/actions/workflows/ci.yml/badge.svg)](https://github.com/piyushptiwari1/mcpkernel/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://python.org)
 
 ---
 
-## Why MCPGuard?
+## Quick Start
+
+```bash
+pip install "mcpkernel[all]"
+mcpkernel serve --host 127.0.0.1 --port 8000
+```
+
+Point your MCP client to `http://localhost:8000/mcp` instead of targeting tool servers directly. Every tool call is now policy-checked, taint-scanned, sandboxed, and audit-logged.
+
+---
+
+## Why MCPKernel?
 
 AI agents (LangChain, CrewAI, AutoGen, Copilot) call tools autonomously — reading files, executing code, making HTTP requests. Without a security layer, a single prompt injection can exfiltrate secrets, overwrite critical files, or run arbitrary code.
 
-**MCPGuard is the missing chokepoint.** It sits between your agent and MCP tool servers, enforcing security policies on every single call:
+**MCPKernel is the missing chokepoint.** It sits between your agent and MCP tool servers, enforcing security policies on every single call:
 
 ```
 ┌─────────────┐     ┌──────────────────────────┐     ┌─────────────┐
-│  AI Agent    │────▶│       MCPGuard           │────▶│  MCP Tool   │
+│  AI Agent    │────▶│       MCPKernel           │────▶│  MCP Tool   │
 │ (LangChain,  │◀────│  Security Gateway        │◀────│  Server     │
 │ CrewAI, etc) │     └──────────────────────────┘     └─────────────┘
 └─────────────┘       │ Policy │ Taint │ Sandbox │
@@ -25,7 +36,7 @@ AI agents (LangChain, CrewAI, AutoGen, Copilot) call tools autonomously — read
 
 ### What happens to every tool call:
 
-| Step | What MCPGuard Does |
+| Step | What MCPKernel Does |
 |------|-------------------|
 | **1. Policy Check** | Evaluates against YAML rules with OWASP ASI 2026 mappings — blocks or allows |
 | **2. Taint Scan** | Detects secrets (AWS keys, JWTs), PII (SSN, credit cards), and user input in arguments |
@@ -50,17 +61,14 @@ AI agents (LangChain, CrewAI, AutoGen, Copilot) call tools autonomously — read
 
 ---
 
-## Quick Start
+## Getting Started
 
 ```bash
-# Install
-pip install -e "."
-
-# Initialize config and policies
-mcpguard init
+# Install with all backends
+pip install "mcpkernel[all]"
 
 # Start the security gateway
-mcpguard serve --host 127.0.0.1 --port 8000
+mcpkernel serve --host 127.0.0.1 --port 8000
 ```
 
 Point your MCP client to `http://localhost:8000/mcp` instead of targeting tool servers directly.
@@ -69,7 +77,7 @@ Point your MCP client to `http://localhost:8000/mcp` instead of targeting tool s
 
 ## Use Cases
 
-| Scenario | How MCPGuard Helps |
+| Scenario | How MCPKernel Helps |
 |----------|-------------------|
 | **AI Coding Assistants** | Intercepts Copilot/Cursor tool calls, blocks dangerous file writes, prevents secret exfiltration |
 | **Autonomous Agents** | Policy-enforces LangChain/CrewAI/AutoGen tool usage, sandboxes code execution |
@@ -83,7 +91,7 @@ Point your MCP client to `http://localhost:8000/mcp` instead of targeting tool s
 ## Architecture
 
 ```
-src/mcpguard/
+src/mcpkernel/
 ├── proxy/          # FastAPI MCP/A2A gateway — auth, rate limiting, plugin pipeline
 ├── policy/         # YAML rule engine with OWASP ASI 2026 mappings
 ├── taint/          # Source/sink taint tracking — secrets, PII, user input detection
@@ -102,7 +110,7 @@ src/mcpguard/
 
 ## Policy Rules
 
-MCPGuard ships with three policy sets:
+MCPKernel ships with three policy sets:
 
 - **`owasp_asi_2026_strict.yaml`** — Full OWASP ASI 2026 coverage (ASI-01 through ASI-08)
 - **`minimal.yaml`** — Lightweight defaults for development
@@ -132,16 +140,16 @@ rules:
 
 | Command | Description |
 |---------|-------------|
-| `mcpguard serve` | Start the proxy gateway |
-| `mcpguard init` | Initialize config and policies in a project |
-| `mcpguard scan <file>` | Static taint analysis on Python code |
-| `mcpguard validate-policy <path>` | Validate policy YAML files |
-| `mcpguard trace-list` | List recent execution traces |
-| `mcpguard trace-export <id>` | Export a trace as JSON |
-| `mcpguard replay <id>` | Replay a trace and check for drift |
-| `mcpguard audit-query` | Query audit logs with filters |
-| `mcpguard audit-verify` | Verify audit log integrity |
-| `mcpguard config-show` | Show effective configuration |
+| `mcpkernel serve` | Start the proxy gateway |
+| `mcpkernel init` | Initialize config and policies in a project |
+| `mcpkernel scan <file>` | Static taint analysis on Python code |
+| `mcpkernel validate-policy <path>` | Validate policy YAML files |
+| `mcpkernel trace-list` | List recent execution traces |
+| `mcpkernel trace-export <id>` | Export a trace as JSON |
+| `mcpkernel replay <id>` | Replay a trace and check for drift |
+| `mcpkernel audit-query` | Query audit logs with filters |
+| `mcpkernel audit-verify` | Verify audit log integrity |
+| `mcpkernel config-show` | Show effective configuration |
 
 ---
 
@@ -150,7 +158,7 @@ rules:
 Config loads hierarchically: **YAML → environment variables → CLI flags**.
 
 ```yaml
-# .mcpguard/config.yaml
+# .mcpkernel/config.yaml
 proxy:
   host: 127.0.0.1
   port: 8000
@@ -173,7 +181,7 @@ observability:
   otlp_endpoint: ""      # Set for OpenTelemetry export
 ```
 
-Environment variable override: `MCPGUARD_SANDBOX__BACKEND=wasm`
+Environment variable override: `MCPKERNEL_SANDBOX__BACKEND=wasm`
 
 ---
 
@@ -193,12 +201,12 @@ docker compose --profile monitoring up -d
 
 ```bash
 # Clone and install
-git clone https://github.com/piyushptiwari1/mcpguard.git
-cd mcpguard
+git clone https://github.com/piyushptiwari1/mcpkernel.git
+cd mcpkernel
 pip install -e ".[dev]"
 
 # Run tests (345 tests, 86% coverage)
-pytest tests/ -v --cov=mcpguard
+pytest tests/ -v --cov=mcpkernel
 
 # Lint
 ruff check src/ tests/
@@ -211,7 +219,7 @@ ruff format src/ tests/
 
 Integration examples for popular AI agent frameworks:
 
-- [LangChain](examples/langchain/) — route LangChain tool calls through MCPGuard
+- [LangChain](examples/langchain/) — route LangChain tool calls through MCPKernel
 - [CrewAI](examples/crewai/) — secure CrewAI agent tool usage
 - [AutoGen](examples/autogen/) — protect AutoGen multi-agent conversations
 - [Copilot Guard](examples/copilot_guard/) — intercept Copilot/Cursor tool calls
@@ -225,7 +233,7 @@ Integration examples for popular AI agent frameworks:
 Today agents trust the gateway. Tomorrow, **Agent A (Company X)** will call a tool on **Agent B (Company Y)** — across organizational boundaries.
 
 - **Problem:** How does Agent B verify that Agent A's call was authorized by a specific policy without revealing the underlying data?
-- **Plan:** Add a **ZK-Policy module** to MCPGuard. Agents will produce zero-knowledge proofs of policy compliance, enabling cross-org tool calls with cryptographic "sovereignty" — no private code or data is ever exposed.
+- **Plan:** Add a **ZK-Policy module** to MCPKernel. Agents will produce zero-knowledge proofs of policy compliance, enabling cross-org tool calls with cryptographic "sovereignty" — no private code or data is ever exposed.
 
 ### 2. Physical-World Safety Layer (Robotic MCP)
 
@@ -239,7 +247,7 @@ As MCP expands into IoT and Robotics (Digital Twins), the "sandbox" isn't just a
 Instead of being a passive gatekeeper, the gateway should **attack itself**.
 
 - **Problem:** New prompt injection techniques and policy bypasses appear daily. Static rules can't keep up.
-- **Plan:** A **Shadow LLM module** that continuously attempts prompt injections against MCPGuard's own policies in real-time, discovering 0-day vulnerabilities in agent logic before adversaries do.
+- **Plan:** A **Shadow LLM module** that continuously attempts prompt injections against MCPKernel's own policies in real-time, discovering 0-day vulnerabilities in agent logic before adversaries do.
 
 ### 4. Parallel Taint Analysis (Cold-Start Latency < 50 ms)
 
@@ -257,27 +265,17 @@ Security matters, but **saving money sells faster**. The `context/` module alrea
 
 ## Competitive Landscape
 
-MCPGuard is a **runtime security gateway** — it sits in the live request path intercepting every tool call. This is fundamentally different from the scanners and config auditors in the ecosystem:
+MCPKernel is a **runtime security gateway** — it sits in the live request path intercepting every tool call. This is fundamentally different from the scanners and config auditors in the ecosystem:
 
-| Project | What It Does | How MCPGuard Differs |
+| Project | What It Does | How MCPKernel Differs |
 |---------|-------------|---------------------|
-| [SaravanaGuhan/mcp-guard](https://github.com/SaravanaGuhan/mcp-guard) | Static/dynamic **vulnerability scanner** for MCP servers (CVSS v4.0 + AIVSS) | Scanner finds bugs *before* deployment; MCPGuard enforces policy *at runtime*. Complementary — run mcp-guard in CI, MCPGuard in prod. |
-| [aryanjp1/mcpguard](https://github.com/aryanjp1/mcpguard) (PyPI `mcpguard`) | MCP config **static scanner** — audits `claude_desktop_config.json` for OWASP MCP Top 10 | Config linter, no runtime component. Internally uses `mcpshield` package. Has claimed the `mcpguard` PyPI name (v0.1.0, Feb 2026). |
+| [SaravanaGuhan/mcp-guard](https://github.com/SaravanaGuhan/mcp-guard) | Static/dynamic **vulnerability scanner** for MCP servers (CVSS v4.0 + AIVSS) | Scanner finds bugs *before* deployment; MCPKernel enforces policy *at runtime*. Complementary — run mcp-guard in CI, MCPKernel in prod. |
+| [aryanjp1/mcpguard](https://github.com/aryanjp1/mcpguard) (PyPI `mcpguard`) | MCP config **static scanner** — audits `claude_desktop_config.json` for OWASP MCP Top 10 | Config linter, no runtime component. Internally uses `mcpshield` package. |
 | [kriskimmerle/mcpguard](https://github.com/kriskimmerle/mcpguard) | MCP config **auditor** — secrets, unpinned packages, Docker access. Zero deps. **Archived Feb 2026.** | Single-file config checker. Archived. No overlap. |
-| [mcpshield](https://pypi.org/project/mcpshield/) (PyPI) | Database security gateway for AI agents (Postgres, MySQL, Redis, MongoDB) with cloud dashboard | DB-only scope with SaaS dependency. MCPGuard is infrastructure-agnostic, self-hosted, and covers any MCP tool call. |
+| [mcpshield](https://pypi.org/project/mcpshield/) (PyPI) | Database security gateway for AI agents (Postgres, MySQL, Redis, MongoDB) with cloud dashboard | DB-only scope with SaaS dependency. MCPKernel is infrastructure-agnostic, self-hosted, and covers any MCP tool call. |
 | [mcp-proxy](https://pypi.org/project/mcp-proxy/) | Transport bridge (stdio ↔ SSE/StreamableHTTP) | Pure transport, zero security features. |
 
-**Bottom line:** No existing project provides the full runtime stack MCPGuard delivers — policy engine + taint tracking + sandboxing + deterministic envelopes + Sigstore audit + eBPF, all in one gateway.
-
-### PyPI Package Name
-
-The name `mcpguard` on PyPI is currently held by an unrelated config-scanning project (0 stars, 0 dependents, released Feb 2026). Our options:
-
-1. **Publish as `mcpguard-gateway`** — available, unambiguous, ship immediately once email is confirmed.
-2. **File a PEP 541 claim** — PyPI's [name reclaim policy](https://peps.python.org/pep-0541/) allows transfer of names from low-activity/abandoned projects. Takes time.
-3. **Rebrand the PyPI distribution name only** while keeping the GitHub repo name `mcpguard`.
-
-> Current decision: publish as **`mcpguard-gateway`** on PyPI (import name stays `mcpguard`). Revisit PEP 541 if traction warrants it.
+**Bottom line:** No existing project provides the full runtime stack MCPKernel delivers — policy engine + taint tracking + sandboxing + deterministic envelopes + Sigstore audit + eBPF, all in one gateway.
 
 ---
 

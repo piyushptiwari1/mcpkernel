@@ -1,6 +1,6 @@
 ---
 name: test-and-merge
-description: 'Multi-step workflow to run the full MCPGuard test suite, validate code quality, and merge development branch to main when all checks pass. Use when validating changes, preparing for merge, or checking if development is ready for main.'
+description: 'Multi-step workflow to run the full MCPKernel test suite, validate code quality, and merge development branch to main when all checks pass. Use when validating changes, preparing for merge, or checking if development is ready for main.'
 ---
 
 # Test and Merge Workflow

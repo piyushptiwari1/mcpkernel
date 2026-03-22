@@ -1,12 +1,12 @@
-# MCPGuard — Project Context for All Agents
+# MCPKernel — Project Context for All Agents
 
 ## Project Overview
-MCPGuard is an open-source **Execution Sovereignty Stack** — a mandatory, deterministic MCP/A2A gateway that makes every agent tool call provably replayable, taint-safe, and policy-enforced. Licensed under Apache 2.0.
+MCPKernel is an open-source **Execution Sovereignty Stack** — a mandatory, deterministic MCP/A2A gateway that makes every agent tool call provably replayable, taint-safe, and policy-enforced. Licensed under Apache 2.0.
 
-**Repository**: `piyushptiwari1/mcpguard`
+**Repository**: `piyushptiwari1/mcpkernel`
 
 ## Architecture
-- **10 packages** in `src/mcpguard/`: proxy, sandbox, dee, taint, context, ebpf, policy, audit, observability, cli
+- **10 packages** in `src/mcpkernel/`: proxy, sandbox, dee, taint, context, ebpf, policy, audit, observability, cli
 - **Proxy**: AsyncIO MCP/A2A transparent gateway with SSE/stdio transport
 - **Policy**: YAML-based rules engine with OWASP ASI 2026 mappings
 - **Taint**: Multi-mode taint tracking (FULL/LIGHT/OFF) for secrets, PII, user input
@@ -23,7 +23,7 @@ MCPGuard is an open-source **Execution Sovereignty Stack** — a mandatory, dete
 - Type hints on all public APIs
 - Tests in `tests/` using `pytest` with async support
 - All 291 tests must pass before merging to main
-- Coverage must be ≥80% (`python -m pytest --cov=mcpguard`)
+- Coverage must be ≥80% (`python -m pytest --cov=mcpkernel`)
 - Lint clean: `ruff check src/ tests/` must show zero errors
 - Format clean: `ruff format --check src/ tests/` must pass
 
@@ -45,7 +45,7 @@ ruff check src/ tests/
 ruff format --check src/ tests/
 
 # Type check
-mypy src/mcpguard/
+mypy src/mcpkernel/
 ```
 
 ## Git Workflow

@@ -24,27 +24,28 @@ if TYPE_CHECKING:
 import httpx
 import pytest
 
-from mcpguard.audit.logger import AuditLogger
-from mcpguard.config import (
+from mcpkernel.audit.logger import AuditLogger
+from mcpkernel.config import (
     AuditConfig,
     AuthConfig,
     DEEConfig,
     EBPFConfig,
-    MCPGuardSettings,
+    MCPKernelSettings,
     PolicyConfig,
     ProxyConfig,
     RateLimitConfig,
     SandboxConfig,
 )
-from mcpguard.config import (
+from mcpkernel.config import (
     SandboxBackend as SBEnum,
 )
-from mcpguard.dee.trace_store import TraceStore
-from mcpguard.proxy.interceptor import ExecutionResult
+from mcpkernel.dee.trace_store import TraceStore
+from mcpkernel.proxy.interceptor import ExecutionResult
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _jsonrpc_tool_call(
     tool_name: str = "execute_code",
@@ -85,19 +86,23 @@ def _make_policy_yaml(tmp_path: Path, rules: list[dict[str, Any]]) -> Path:
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
-def dev_settings(tmp_path: Path) -> MCPGuardSettings:
+def dev_settings(tmp_path: Path) -> MCPKernelSettings:
     """Dev-mode settings: no auth, no rate limit, allow-all policy."""
-    policy_file = _make_policy_yaml(tmp_path, [
-        {
-            "id": "DEV-001",
-            "name": "Allow everything",
-            "action": "allow",
-            "priority": 1000,
-            "tool_patterns": [".*"],
-        },
-    ])
-    settings = MCPGuardSettings(
+    policy_file = _make_policy_yaml(
+        tmp_path,
+        [
+            {
+                "id": "DEV-001",
+                "name": "Allow everything",
+                "action": "allow",
+                "priority": 1000,
+                "tool_patterns": [".*"],
+            },
+        ],
+    )
+    settings = MCPKernelSettings(
         proxy=ProxyConfig(host="127.0.0.1", port=9999, max_request_size_bytes=4096),
         auth=AuthConfig(enabled=False),
         rate_limit=RateLimitConfig(enabled=False),
@@ -108,40 +113,44 @@ def dev_settings(tmp_path: Path) -> MCPGuardSettings:
         ebpf=EBPFConfig(enabled=False),
     )
     # Set as global config singleton
-    import mcpguard.config as _cfg
+    import mcpkernel.config as _cfg
+
     _cfg._settings = settings
     return settings
 
 
 @pytest.fixture
-def prod_settings(tmp_path: Path) -> MCPGuardSettings:
+def prod_settings(tmp_path: Path) -> MCPKernelSettings:
     """Prod-mode: API key auth, rate limiting, deny-by-default policy."""
-    policy_file = _make_policy_yaml(tmp_path, [
-        {
-            "id": "PROD-001",
-            "name": "Block shell commands",
-            "description": "Deny all shell_* tools",
-            "action": "deny",
-            "priority": 10,
-            "tool_patterns": ["shell_.*"],
-        },
-        {
-            "id": "PROD-002",
-            "name": "Allow execute_code",
-            "description": "Explicitly allow execute_code",
-            "action": "allow",
-            "priority": 50,
-            "tool_patterns": ["execute_code"],
-        },
-        {
-            "id": "PROD-003",
-            "name": "Audit all other tools",
-            "action": "audit",
-            "priority": 100,
-            "tool_patterns": [".*"],
-        },
-    ])
-    settings = MCPGuardSettings(
+    policy_file = _make_policy_yaml(
+        tmp_path,
+        [
+            {
+                "id": "PROD-001",
+                "name": "Block shell commands",
+                "description": "Deny all shell_* tools",
+                "action": "deny",
+                "priority": 10,
+                "tool_patterns": ["shell_.*"],
+            },
+            {
+                "id": "PROD-002",
+                "name": "Allow execute_code",
+                "description": "Explicitly allow execute_code",
+                "action": "allow",
+                "priority": 50,
+                "tool_patterns": ["execute_code"],
+            },
+            {
+                "id": "PROD-003",
+                "name": "Audit all other tools",
+                "action": "audit",
+                "priority": 100,
+                "tool_patterns": [".*"],
+            },
+        ],
+    )
+    settings = MCPKernelSettings(
         proxy=ProxyConfig(host="127.0.0.1", port=9998, max_request_size_bytes=2048),
         auth=AuthConfig(enabled=True, api_keys=["test-secret-key-1234"]),
         rate_limit=RateLimitConfig(enabled=True, requests_per_minute=6, burst_size=3),
@@ -151,33 +160,37 @@ def prod_settings(tmp_path: Path) -> MCPGuardSettings:
         policy=PolicyConfig(policy_paths=[policy_file], default_action="deny"),
         ebpf=EBPFConfig(enabled=False),
     )
-    import mcpguard.config as _cfg
+    import mcpkernel.config as _cfg
+
     _cfg._settings = settings
     return settings
 
 
 @pytest.fixture
-def taint_settings(tmp_path: Path) -> MCPGuardSettings:
+def taint_settings(tmp_path: Path) -> MCPKernelSettings:
     """Settings that pair taint detection with a policy that blocks on secret taint."""
-    policy_file = _make_policy_yaml(tmp_path, [
-        {
-            "id": "TAINT-001",
-            "name": "Block tainted secrets",
-            "description": "Deny when arguments contain secrets",
-            "action": "deny",
-            "priority": 10,
-            "tool_patterns": [".*"],
-            "taint_labels": ["secret"],
-        },
-        {
-            "id": "TAINT-002",
-            "name": "Allow clean calls",
-            "action": "allow",
-            "priority": 100,
-            "tool_patterns": [".*"],
-        },
-    ])
-    settings = MCPGuardSettings(
+    policy_file = _make_policy_yaml(
+        tmp_path,
+        [
+            {
+                "id": "TAINT-001",
+                "name": "Block tainted secrets",
+                "description": "Deny when arguments contain secrets",
+                "action": "deny",
+                "priority": 10,
+                "tool_patterns": [".*"],
+                "taint_labels": ["secret"],
+            },
+            {
+                "id": "TAINT-002",
+                "name": "Allow clean calls",
+                "action": "allow",
+                "priority": 100,
+                "tool_patterns": [".*"],
+            },
+        ],
+    )
+    settings = MCPKernelSettings(
         proxy=ProxyConfig(host="127.0.0.1", port=9997),
         auth=AuthConfig(enabled=False),
         rate_limit=RateLimitConfig(enabled=False),
@@ -187,7 +200,8 @@ def taint_settings(tmp_path: Path) -> MCPGuardSettings:
         policy=PolicyConfig(policy_paths=[policy_file], default_action="allow"),
         ebpf=EBPFConfig(enabled=False),
     )
-    import mcpguard.config as _cfg
+    import mcpkernel.config as _cfg
+
     _cfg._settings = settings
     return settings
 
@@ -195,7 +209,7 @@ def taint_settings(tmp_path: Path) -> MCPGuardSettings:
 class _IntegrationClient:
     """Context manager that boots the full proxy with a mock sandbox backend."""
 
-    def __init__(self, settings: MCPGuardSettings) -> None:
+    def __init__(self, settings: MCPKernelSettings) -> None:
         self._settings = settings
         self._mock_exec = AsyncMock(return_value=_ok_result())
         self._client: httpx.AsyncClient | None = None
@@ -209,7 +223,7 @@ class _IntegrationClient:
     async def __aenter__(self) -> httpx.AsyncClient:
         from unittest.mock import MagicMock
 
-        from mcpguard.proxy import server as srv
+        from mcpkernel.proxy import server as srv
 
         # Reset module-level singletons so each test is isolated
         srv._pipeline = srv.InterceptorPipeline()
@@ -222,7 +236,7 @@ class _IntegrationClient:
         mock_backend = MagicMock()
         mock_backend.execute_code = self._mock_exec
 
-        self._patcher = patch("mcpguard.sandbox.create_backend", return_value=mock_backend)
+        self._patcher = patch("mcpkernel.sandbox.create_backend", return_value=mock_backend)
         self._patcher.start()
 
         # Settings are already set as global config by the fixture.
@@ -252,16 +266,16 @@ class _IntegrationClient:
 class TestDevModeEndToEnd:
     """Dev environment: no auth, permissive policy, full pipeline."""
 
-    async def test_health_endpoint(self, dev_settings: MCPGuardSettings) -> None:
+    async def test_health_endpoint(self, dev_settings: MCPKernelSettings) -> None:
         ic = _IntegrationClient(dev_settings)
         async with ic as client:
             resp = await client.get("/health")
             assert resp.status_code == 200
             data = resp.json()
             assert data["status"] == "ok"
-            assert data["service"] == "mcpguard"
+            assert data["service"] == "mcpkernel"
 
-    async def test_tool_call_success(self, dev_settings: MCPGuardSettings) -> None:
+    async def test_tool_call_success(self, dev_settings: MCPKernelSettings) -> None:
         ic = _IntegrationClient(dev_settings)
         ic.mock_exec.return_value = _ok_result(text="world")
         async with ic as client:
@@ -273,41 +287,47 @@ class TestDevModeEndToEnd:
             assert body["result"]["content"][0]["text"] == "world"
             assert body["result"]["isError"] is False
 
-    async def test_anonymous_identity(self, dev_settings: MCPGuardSettings) -> None:
+    async def test_anonymous_identity(self, dev_settings: MCPKernelSettings) -> None:
         """Without auth, the identity should be 'anonymous'."""
         ic = _IntegrationClient(dev_settings)
         async with ic as client:
             resp = await client.post("/mcp", json=_jsonrpc_tool_call())
             assert resp.status_code == 200
 
-    async def test_non_tool_call_passthrough(self, dev_settings: MCPGuardSettings) -> None:
+    async def test_non_tool_call_passthrough(self, dev_settings: MCPKernelSettings) -> None:
         """Non tools/call methods should pass through unchanged."""
         ic = _IntegrationClient(dev_settings)
         async with ic as client:
-            resp = await client.post("/mcp", json={
-                "jsonrpc": "2.0",
-                "id": 42,
-                "method": "tools/list",
-                "params": {},
-            })
+            resp = await client.post(
+                "/mcp",
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 42,
+                    "method": "tools/list",
+                    "params": {},
+                },
+            )
             assert resp.status_code == 200
             body = resp.json()
             assert body["id"] == 42
 
-    async def test_legacy_rest_request_normalized(self, dev_settings: MCPGuardSettings) -> None:
+    async def test_legacy_rest_request_normalized(self, dev_settings: MCPKernelSettings) -> None:
         """Non-JSON-RPC REST-style requests should be auto-normalized to MCP."""
         ic = _IntegrationClient(dev_settings)
         ic.mock_exec.return_value = _ok_result(text="normalized ok")
         async with ic as client:
-            resp = await client.post("/mcp", json={
-                "tool": "execute_code",
-                "arguments": {"code": "1+1"},
-            })
+            resp = await client.post(
+                "/mcp",
+                json={
+                    "tool": "execute_code",
+                    "arguments": {"code": "1+1"},
+                },
+            )
             assert resp.status_code == 200
             body = resp.json()
             assert body["result"]["content"][0]["text"] == "normalized ok"
 
-    async def test_sandbox_error_propagated(self, dev_settings: MCPGuardSettings) -> None:
+    async def test_sandbox_error_propagated(self, dev_settings: MCPKernelSettings) -> None:
         """If the sandbox returns an error result, it should pass through."""
         ic = _IntegrationClient(dev_settings)
         ic.mock_exec.return_value = ExecutionResult(
@@ -321,7 +341,7 @@ class TestDevModeEndToEnd:
             assert body["result"]["isError"] is True
             assert "SyntaxError" in body["result"]["content"][0]["text"]
 
-    async def test_sandbox_exception_caught(self, dev_settings: MCPGuardSettings) -> None:
+    async def test_sandbox_exception_caught(self, dev_settings: MCPKernelSettings) -> None:
         """If the sandbox raises an exception, it should be caught gracefully."""
         ic = _IntegrationClient(dev_settings)
         ic.mock_exec.side_effect = RuntimeError("Docker daemon crashed")
@@ -339,7 +359,7 @@ class TestDevModeEndToEnd:
 class TestDevModeErrors:
     """Edge cases: bad JSON, oversized payloads."""
 
-    async def test_invalid_json_returns_parse_error(self, dev_settings: MCPGuardSettings) -> None:
+    async def test_invalid_json_returns_parse_error(self, dev_settings: MCPKernelSettings) -> None:
         ic = _IntegrationClient(dev_settings)
         async with ic as client:
             resp = await client.post(
@@ -352,7 +372,7 @@ class TestDevModeErrors:
             assert body["error"]["code"] == -32700
             assert "Parse error" in body["error"]["message"]
 
-    async def test_oversized_body_rejected(self, dev_settings: MCPGuardSettings) -> None:
+    async def test_oversized_body_rejected(self, dev_settings: MCPKernelSettings) -> None:
         """Body larger than max_request_size_bytes (4096 in dev) is rejected."""
         ic = _IntegrationClient(dev_settings)
         async with ic as client:
@@ -373,7 +393,7 @@ class TestDevModeErrors:
 class TestProdModeAuth:
     """Prod config: API-key auth is mandatory."""
 
-    async def test_missing_auth_rejected(self, prod_settings: MCPGuardSettings) -> None:
+    async def test_missing_auth_rejected(self, prod_settings: MCPKernelSettings) -> None:
         ic = _IntegrationClient(prod_settings)
         async with ic as client:
             resp = await client.post("/mcp", json=_jsonrpc_tool_call())
@@ -381,7 +401,7 @@ class TestProdModeAuth:
             body = resp.json()
             assert body["error"]["code"] == -32001
 
-    async def test_invalid_api_key_rejected(self, prod_settings: MCPGuardSettings) -> None:
+    async def test_invalid_api_key_rejected(self, prod_settings: MCPKernelSettings) -> None:
         ic = _IntegrationClient(prod_settings)
         async with ic as client:
             resp = await client.post(
@@ -391,7 +411,7 @@ class TestProdModeAuth:
             )
             assert resp.status_code == 401
 
-    async def test_valid_api_key_accepted(self, prod_settings: MCPGuardSettings) -> None:
+    async def test_valid_api_key_accepted(self, prod_settings: MCPKernelSettings) -> None:
         ic = _IntegrationClient(prod_settings)
         async with ic as client:
             resp = await client.post(
@@ -410,7 +430,7 @@ class TestProdModeAuth:
 class TestProdModeRateLimit:
     """Prod config: rate limiting enforced (burst=3, 6 req/min)."""
 
-    async def test_rate_limit_enforced(self, prod_settings: MCPGuardSettings) -> None:
+    async def test_rate_limit_enforced(self, prod_settings: MCPKernelSettings) -> None:
         ic = _IntegrationClient(prod_settings)
         auth = {"authorization": "Bearer test-secret-key-1234"}
         async with ic as client:
@@ -436,7 +456,7 @@ class TestProdModeRateLimit:
 class TestProdModePolicy:
     """Prod config: deny-by-default, specific allow rules."""
 
-    async def test_allowed_tool_passes(self, prod_settings: MCPGuardSettings) -> None:
+    async def test_allowed_tool_passes(self, prod_settings: MCPKernelSettings) -> None:
         """execute_code is explicitly allowed by PROD-002."""
         ic = _IntegrationClient(prod_settings)
         async with ic as client:
@@ -449,7 +469,7 @@ class TestProdModePolicy:
             body = resp.json()
             assert body["result"]["isError"] is False
 
-    async def test_denied_tool_blocked(self, prod_settings: MCPGuardSettings) -> None:
+    async def test_denied_tool_blocked(self, prod_settings: MCPKernelSettings) -> None:
         """shell_exec is denied by PROD-001."""
         ic = _IntegrationClient(prod_settings)
         async with ic as client:
@@ -465,7 +485,7 @@ class TestProdModePolicy:
             # Sandbox should NOT have been called
             ic.mock_exec.assert_not_called()
 
-    async def test_unknown_tool_denied_by_default(self, prod_settings: MCPGuardSettings) -> None:
+    async def test_unknown_tool_denied_by_default(self, prod_settings: MCPKernelSettings) -> None:
         """Unknown tools match PROD-003 (audit), which is allowed."""
         ic = _IntegrationClient(prod_settings)
         async with ic as client:
@@ -484,33 +504,42 @@ class TestProdModePolicy:
 class TestTaintIntegration:
     """Taint-aware policy: detect secrets in arguments, block if tainted."""
 
-    async def test_clean_arguments_pass(self, taint_settings: MCPGuardSettings) -> None:
+    async def test_clean_arguments_pass(self, taint_settings: MCPKernelSettings) -> None:
         """No taint → allowed through by TAINT-002."""
         ic = _IntegrationClient(taint_settings)
         async with ic as client:
-            resp = await client.post("/mcp", json=_jsonrpc_tool_call(
-                arguments={"code": "print('safe code')", "language": "python"},
-            ))
+            resp = await client.post(
+                "/mcp",
+                json=_jsonrpc_tool_call(
+                    arguments={"code": "print('safe code')", "language": "python"},
+                ),
+            )
             assert resp.status_code == 200
 
-    async def test_aws_key_passed_through(self, taint_settings: MCPGuardSettings) -> None:
+    async def test_aws_key_passed_through(self, taint_settings: MCPKernelSettings) -> None:
         """AWS key in arguments: taint detected for audit, but policy already evaluated."""
         ic = _IntegrationClient(taint_settings)
         async with ic as client:
-            resp = await client.post("/mcp", json=_jsonrpc_tool_call(
-                arguments={"code": "import boto3; key='AKIA1234567890ABCDEF'"},
-            ))
+            resp = await client.post(
+                "/mcp",
+                json=_jsonrpc_tool_call(
+                    arguments={"code": "import boto3; key='AKIA1234567890ABCDEF'"},
+                ),
+            )
             # PolicyHook(1000) runs FIRST, then TaintHook(900).
             # Taint labels are empty when policy evaluates → TAINT-002 allows.
             assert resp.status_code == 200
 
-    async def test_pii_ssn_detected_in_audit(self, taint_settings: MCPGuardSettings, tmp_path: Path) -> None:
+    async def test_pii_ssn_detected_in_audit(self, taint_settings: MCPKernelSettings, tmp_path: Path) -> None:
         """SSN in arguments should be detected by taint scanner (audit trail)."""
         ic = _IntegrationClient(taint_settings)
         async with ic as client:
-            resp = await client.post("/mcp", json=_jsonrpc_tool_call(
-                arguments={"code": "ssn = '123-45-6789'"},
-            ))
+            resp = await client.post(
+                "/mcp",
+                json=_jsonrpc_tool_call(
+                    arguments={"code": "ssn = '123-45-6789'"},
+                ),
+            )
             assert resp.status_code == 200
 
             # Verify taint detection happened by checking audit DB
@@ -530,7 +559,7 @@ class TestTaintIntegration:
 class TestFullPipeline:
     """Verify the complete pipeline produces DEE traces and audit entries."""
 
-    async def test_dee_trace_stored(self, dev_settings: MCPGuardSettings, tmp_path: Path) -> None:
+    async def test_dee_trace_stored(self, dev_settings: MCPKernelSettings, tmp_path: Path) -> None:
         """A successful tool call should produce a DEE trace record."""
         ic = _IntegrationClient(dev_settings)
         ic.mock_exec.return_value = _ok_result(text="traced result")
@@ -549,7 +578,7 @@ class TestFullPipeline:
             assert last_trace["tool_name"] == "execute_code"
             assert last_trace["agent_id"] == "anonymous"
 
-    async def test_audit_entry_created(self, dev_settings: MCPGuardSettings, tmp_path: Path) -> None:
+    async def test_audit_entry_created(self, dev_settings: MCPKernelSettings, tmp_path: Path) -> None:
         """Every tool call should produce an audit log entry."""
         ic = _IntegrationClient(dev_settings)
         async with ic as client:
@@ -568,7 +597,7 @@ class TestFullPipeline:
             assert entry.agent_id == "anonymous"
             assert entry.outcome == "success"
 
-    async def test_blocked_call_not_audited(self, prod_settings: MCPGuardSettings, tmp_path: Path) -> None:
+    async def test_blocked_call_not_audited(self, prod_settings: MCPKernelSettings, tmp_path: Path) -> None:
         """A policy-denied call returns 403 before the log phase, so no audit entry."""
         ic = _IntegrationClient(prod_settings)
         async with ic as client:
@@ -588,7 +617,9 @@ class TestFullPipeline:
             assert len(entries) == 0
 
     async def test_audit_integrity_after_multiple_calls(
-        self, dev_settings: MCPGuardSettings, tmp_path: Path,
+        self,
+        dev_settings: MCPKernelSettings,
+        tmp_path: Path,
     ) -> None:
         """After multiple calls, audit_verify should report all entries valid."""
         ic = _IntegrationClient(dev_settings)
@@ -608,7 +639,9 @@ class TestFullPipeline:
             assert result["tampered_entries"] == 0
 
     async def test_multiple_traces_stored(
-        self, dev_settings: MCPGuardSettings, tmp_path: Path,
+        self,
+        dev_settings: MCPKernelSettings,
+        tmp_path: Path,
     ) -> None:
         """Multiple tool calls should each produce a unique trace."""
         ic = _IntegrationClient(dev_settings)
@@ -634,11 +667,14 @@ class TestPolicyEngineReal:
     """Policy engine with real YAML rules — no mocks on the engine itself."""
 
     def test_allow_all_policy(self, tmp_path: Path) -> None:
-        from mcpguard.policy import PolicyAction, PolicyEngine, load_policy_file
+        from mcpkernel.policy import PolicyAction, PolicyEngine, load_policy_file
 
-        policy_file = _make_policy_yaml(tmp_path, [
-            {"id": "R1", "name": "Allow all", "action": "allow", "priority": 1, "tool_patterns": [".*"]},
-        ])
+        policy_file = _make_policy_yaml(
+            tmp_path,
+            [
+                {"id": "R1", "name": "Allow all", "action": "allow", "priority": 1, "tool_patterns": [".*"]},
+            ],
+        )
         engine = PolicyEngine(default_action=PolicyAction.DENY)
         engine.add_rules(load_policy_file(policy_file))
 
@@ -647,12 +683,15 @@ class TestPolicyEngineReal:
         assert decision.action == PolicyAction.ALLOW
 
     def test_deny_specific_tool(self, tmp_path: Path) -> None:
-        from mcpguard.policy import PolicyAction, PolicyEngine, load_policy_file
+        from mcpkernel.policy import PolicyAction, PolicyEngine, load_policy_file
 
-        policy_file = _make_policy_yaml(tmp_path, [
-            {"id": "R1", "name": "Block shell", "action": "deny", "priority": 10, "tool_patterns": ["shell_.*"]},
-            {"id": "R2", "name": "Allow rest", "action": "allow", "priority": 100, "tool_patterns": [".*"]},
-        ])
+        policy_file = _make_policy_yaml(
+            tmp_path,
+            [
+                {"id": "R1", "name": "Block shell", "action": "deny", "priority": 10, "tool_patterns": ["shell_.*"]},
+                {"id": "R2", "name": "Allow rest", "action": "allow", "priority": 100, "tool_patterns": [".*"]},
+            ],
+        )
         engine = PolicyEngine(default_action=PolicyAction.DENY)
         engine.add_rules(load_policy_file(policy_file))
 
@@ -664,12 +703,15 @@ class TestPolicyEngineReal:
         assert allow.allowed is True
 
     def test_most_restrictive_wins(self, tmp_path: Path) -> None:
-        from mcpguard.policy import PolicyAction, PolicyEngine, load_policy_file
+        from mcpkernel.policy import PolicyAction, PolicyEngine, load_policy_file
 
-        policy_file = _make_policy_yaml(tmp_path, [
-            {"id": "R1", "name": "Allow logs", "action": "allow", "priority": 100, "tool_patterns": ["read_log.*"]},
-            {"id": "R2", "name": "Deny all", "action": "deny", "priority": 50, "tool_patterns": [".*"]},
-        ])
+        policy_file = _make_policy_yaml(
+            tmp_path,
+            [
+                {"id": "R1", "name": "Allow logs", "action": "allow", "priority": 100, "tool_patterns": ["read_log.*"]},
+                {"id": "R2", "name": "Deny all", "action": "deny", "priority": 50, "tool_patterns": [".*"]},
+            ],
+        )
         engine = PolicyEngine(default_action=PolicyAction.ALLOW)
         engine.add_rules(load_policy_file(policy_file))
 
@@ -678,19 +720,22 @@ class TestPolicyEngineReal:
         assert decision.action == PolicyAction.DENY
 
     def test_taint_label_matching(self, tmp_path: Path) -> None:
-        from mcpguard.policy import PolicyAction, PolicyEngine, load_policy_file
+        from mcpkernel.policy import PolicyAction, PolicyEngine, load_policy_file
 
-        policy_file = _make_policy_yaml(tmp_path, [
-            {
-                "id": "R1",
-                "name": "Block secret access",
-                "action": "deny",
-                "priority": 10,
-                "tool_patterns": [".*"],
-                "taint_labels": ["secret"],
-            },
-            {"id": "R2", "name": "Allow rest", "action": "allow", "priority": 100, "tool_patterns": [".*"]},
-        ])
+        policy_file = _make_policy_yaml(
+            tmp_path,
+            [
+                {
+                    "id": "R1",
+                    "name": "Block secret access",
+                    "action": "deny",
+                    "priority": 10,
+                    "tool_patterns": [".*"],
+                    "taint_labels": ["secret"],
+                },
+                {"id": "R2", "name": "Allow rest", "action": "allow", "priority": 100, "tool_patterns": [".*"]},
+            ],
+        )
         engine = PolicyEngine(default_action=PolicyAction.DENY)
         engine.add_rules(load_policy_file(policy_file))
 
@@ -703,19 +748,22 @@ class TestPolicyEngineReal:
         assert tainted.action == PolicyAction.DENY
 
     def test_argument_pattern_matching(self, tmp_path: Path) -> None:
-        from mcpguard.policy import PolicyAction, PolicyEngine, load_policy_file
+        from mcpkernel.policy import PolicyAction, PolicyEngine, load_policy_file
 
-        policy_file = _make_policy_yaml(tmp_path, [
-            {
-                "id": "R1",
-                "name": "Block /etc access",
-                "action": "deny",
-                "priority": 10,
-                "tool_patterns": ["read_file"],
-                "argument_patterns": {"path": "^/etc/.*"},
-            },
-            {"id": "R2", "name": "Allow rest", "action": "allow", "priority": 100, "tool_patterns": [".*"]},
-        ])
+        policy_file = _make_policy_yaml(
+            tmp_path,
+            [
+                {
+                    "id": "R1",
+                    "name": "Block /etc access",
+                    "action": "deny",
+                    "priority": 10,
+                    "tool_patterns": ["read_file"],
+                    "argument_patterns": {"path": "^/etc/.*"},
+                },
+                {"id": "R2", "name": "Allow rest", "action": "allow", "priority": 100, "tool_patterns": [".*"]},
+            ],
+        )
         engine = PolicyEngine(default_action=PolicyAction.DENY)
         engine.add_rules(load_policy_file(policy_file))
 
@@ -733,7 +781,7 @@ class TestTaintDetectionReal:
     """Real taint source detection against various sensitive data patterns."""
 
     def test_aws_key_detected(self) -> None:
-        from mcpguard.taint.sources import detect_tainted_sources
+        from mcpkernel.taint.sources import detect_tainted_sources
 
         detections = detect_tainted_sources({"code": "key = 'AKIA1234567890ABCDEF'"})
         assert len(detections) >= 1
@@ -741,7 +789,7 @@ class TestTaintDetectionReal:
         assert "secret" in labels
 
     def test_ssn_detected(self) -> None:
-        from mcpguard.taint.sources import detect_tainted_sources
+        from mcpkernel.taint.sources import detect_tainted_sources
 
         detections = detect_tainted_sources({"data": "ssn is 123-45-6789"})
         assert len(detections) >= 1
@@ -749,14 +797,14 @@ class TestTaintDetectionReal:
         assert "pii" in labels
 
     def test_jwt_detected(self) -> None:
-        from mcpguard.taint.sources import detect_tainted_sources
+        from mcpkernel.taint.sources import detect_tainted_sources
 
         jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"
         detections = detect_tainted_sources({"token": jwt})
         assert len(detections) >= 1
 
     def test_private_key_detected(self) -> None:
-        from mcpguard.taint.sources import detect_tainted_sources
+        from mcpkernel.taint.sources import detect_tainted_sources
 
         detections = detect_tainted_sources({"key": "-----BEGIN RSA PRIVATE KEY-----"})
         assert len(detections) >= 1
@@ -764,29 +812,31 @@ class TestTaintDetectionReal:
         assert "secret" in labels
 
     def test_email_detected_as_pii(self) -> None:
-        from mcpguard.taint.sources import detect_tainted_sources
+        from mcpkernel.taint.sources import detect_tainted_sources
 
         detections = detect_tainted_sources({"contact": "user@example.com"})
         pii = [d for d in detections if d.label.value == "pii"]
         assert len(pii) >= 1
 
     def test_clean_data_no_detections(self) -> None:
-        from mcpguard.taint.sources import detect_tainted_sources
+        from mcpkernel.taint.sources import detect_tainted_sources
 
         detections = detect_tainted_sources({"code": "print('hello world')", "lang": "python"})
         assert len(detections) == 0
 
     def test_nested_dict_scanning(self) -> None:
-        from mcpguard.taint.sources import detect_tainted_sources
+        from mcpkernel.taint.sources import detect_tainted_sources
 
-        detections = detect_tainted_sources({
-            "outer": "safe",
-            "nested": {"inner": "aws key AKIA1234567890ABCDEF"},
-        })
+        detections = detect_tainted_sources(
+            {
+                "outer": "safe",
+                "nested": {"inner": "aws key AKIA1234567890ABCDEF"},
+            }
+        )
         assert len(detections) >= 1
 
     def test_credit_card_detected(self) -> None:
-        from mcpguard.taint.sources import detect_tainted_sources
+        from mcpkernel.taint.sources import detect_tainted_sources
 
         detections = detect_tainted_sources({"payment": "4111111111111111"})
         pii = [d for d in detections if d.label.value == "pii"]
@@ -802,17 +852,17 @@ class TestCLIReal:
     def test_version_command(self) -> None:
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         runner = CliRunner()
         result = runner.invoke(app, ["version"])
         assert result.exit_code == 0
-        assert "mcpguard" in result.output
+        assert "mcpkernel" in result.output
 
     def test_config_show(self) -> None:
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         runner = CliRunner()
         result = runner.invoke(app, ["config-show"])
@@ -825,11 +875,14 @@ class TestCLIReal:
     def test_validate_policy_real_file(self, tmp_path: Path) -> None:
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
-        policy_file = _make_policy_yaml(tmp_path, [
-            {"id": "CLI-001", "name": "Test rule", "action": "deny", "tool_patterns": ["bad_.*"]},
-        ])
+        policy_file = _make_policy_yaml(
+            tmp_path,
+            [
+                {"id": "CLI-001", "name": "Test rule", "action": "deny", "tool_patterns": ["bad_.*"]},
+            ],
+        )
         runner = CliRunner()
         result = runner.invoke(app, ["validate-policy", str(policy_file)])
         assert result.exit_code == 0
@@ -839,7 +892,7 @@ class TestCLIReal:
     def test_validate_policy_invalid_file(self, tmp_path: Path) -> None:
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         bad_file = tmp_path / "bad.yaml"
         bad_file.write_text("not_rules: []")  # Missing 'rules' key
@@ -850,7 +903,7 @@ class TestCLIReal:
     def test_trace_list_empty_db(self, tmp_path: Path) -> None:
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         db_path = str(tmp_path / "empty_traces.db")
         runner = CliRunner()
@@ -861,7 +914,7 @@ class TestCLIReal:
     def test_audit_query_empty_db(self, tmp_path: Path) -> None:
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         db_path = str(tmp_path / "empty_audit.db")
         runner = CliRunner()
@@ -872,19 +925,19 @@ class TestCLIReal:
     def test_init_command(self, tmp_path: Path) -> None:
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         runner = CliRunner()
         result = runner.invoke(app, ["init", str(tmp_path)])
         assert result.exit_code == 0
         assert "Initialized" in result.output
-        assert (tmp_path / ".mcpguard" / "config.yaml").exists()
-        assert (tmp_path / ".mcpguard" / "policies" / "default.yaml").exists()
+        assert (tmp_path / ".mcpkernel" / "config.yaml").exists()
+        assert (tmp_path / ".mcpkernel" / "policies" / "default.yaml").exists()
 
     def test_scan_clean_file(self, tmp_path: Path) -> None:
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         clean_file = tmp_path / "clean.py"
         clean_file.write_text("def hello():\n    return 'world'\n")
@@ -896,7 +949,7 @@ class TestCLIReal:
     def test_scan_dangerous_file(self, tmp_path: Path) -> None:
         from typer.testing import CliRunner
 
-        from mcpguard.cli import app
+        from mcpkernel.cli import app
 
         bad_file = tmp_path / "dangerous.py"
         bad_file.write_text("import os\nos.system('rm -rf /')\neval(input())\n")
@@ -914,9 +967,9 @@ class TestEBPFHookReal:
 
     async def test_ebpf_blocks_disallowed_domain(self, tmp_path: Path) -> None:
         """When eBPF is conceptually enabled, URLs to non-allowed domains are blocked."""
-        from mcpguard.ebpf.redirector import EgressRule, NetworkRedirector
-        from mcpguard.proxy.hooks import EBPFHook
-        from mcpguard.proxy.interceptor import InterceptorContext, MCPToolCall
+        from mcpkernel.ebpf.redirector import EgressRule, NetworkRedirector
+        from mcpkernel.proxy.hooks import EBPFHook
+        from mcpkernel.proxy.interceptor import InterceptorContext, MCPToolCall
 
         rule = EgressRule(allowed_domains={"api.example.com"})
         redirector = NetworkRedirector(rule)
@@ -935,9 +988,9 @@ class TestEBPFHookReal:
         assert "ebpf" in ctx.abort_reason.lower() or "egress" in ctx.abort_reason.lower()
 
     async def test_ebpf_allows_whitelisted_domain(self, tmp_path: Path) -> None:
-        from mcpguard.ebpf.redirector import EgressRule, NetworkRedirector
-        from mcpguard.proxy.hooks import EBPFHook
-        from mcpguard.proxy.interceptor import InterceptorContext, MCPToolCall
+        from mcpkernel.ebpf.redirector import EgressRule, NetworkRedirector
+        from mcpkernel.proxy.hooks import EBPFHook
+        from mcpkernel.proxy.interceptor import InterceptorContext, MCPToolCall
 
         rule = EgressRule(allowed_domains={"api.example.com"})
         redirector = NetworkRedirector(rule)
@@ -955,9 +1008,9 @@ class TestEBPFHookReal:
         assert ctx.aborted is False
 
     async def test_ebpf_no_url_args_pass(self) -> None:
-        from mcpguard.ebpf.redirector import EgressRule, NetworkRedirector
-        from mcpguard.proxy.hooks import EBPFHook
-        from mcpguard.proxy.interceptor import InterceptorContext, MCPToolCall
+        from mcpkernel.ebpf.redirector import EgressRule, NetworkRedirector
+        from mcpkernel.proxy.hooks import EBPFHook
+        from mcpkernel.proxy.interceptor import InterceptorContext, MCPToolCall
 
         rule = EgressRule(allowed_domains=set())
         redirector = NetworkRedirector(rule)
@@ -982,8 +1035,8 @@ class TestDEEReal:
     """DEE envelope with real trace store."""
 
     async def test_wrap_execution_creates_trace(self, tmp_path: Path) -> None:
-        from mcpguard.dee.envelope import wrap_execution
-        from mcpguard.proxy.interceptor import MCPToolCall
+        from mcpkernel.dee.envelope import wrap_execution
+        from mcpkernel.proxy.interceptor import MCPToolCall
 
         async def fake_exec(call: Any) -> ExecutionResult:
             return _ok_result(text="computed result")
@@ -1004,8 +1057,8 @@ class TestDEEReal:
         assert trace.duration_seconds >= 0
 
     async def test_trace_store_round_trip(self, tmp_path: Path) -> None:
-        from mcpguard.dee.envelope import wrap_execution
-        from mcpguard.proxy.interceptor import MCPToolCall
+        from mcpkernel.dee.envelope import wrap_execution
+        from mcpkernel.proxy.interceptor import MCPToolCall
 
         async def fake_exec(call: Any) -> ExecutionResult:
             return _ok_result(text="stored result")
@@ -1042,7 +1095,7 @@ class TestAuditReal:
     """Audit logger with real SQLite."""
 
     async def test_log_and_query(self, tmp_path: Path) -> None:
-        from mcpguard.audit.logger import AuditEntry, AuditLogger
+        from mcpkernel.audit.logger import AuditEntry, AuditLogger
 
         logger = AuditLogger(db_path=str(tmp_path / "audit_test.db"))
         await logger.initialize()
@@ -1066,7 +1119,7 @@ class TestAuditReal:
         await logger.close()
 
     async def test_integrity_verification(self, tmp_path: Path) -> None:
-        from mcpguard.audit.logger import AuditEntry, AuditLogger
+        from mcpkernel.audit.logger import AuditEntry, AuditLogger
 
         logger = AuditLogger(db_path=str(tmp_path / "integrity_test.db"))
         await logger.initialize()
@@ -1089,27 +1142,31 @@ class TestAuditReal:
         await logger.close()
 
     async def test_query_filters(self, tmp_path: Path) -> None:
-        from mcpguard.audit.logger import AuditEntry, AuditLogger
+        from mcpkernel.audit.logger import AuditEntry, AuditLogger
 
         logger = AuditLogger(db_path=str(tmp_path / "filter_test.db"))
         await logger.initialize()
 
         # Insert mixed entries
         for tool in ["alpha", "beta", "alpha"]:
-            await logger.log(AuditEntry(
-                event_type="tool_call",
-                tool_name=tool,
+            await logger.log(
+                AuditEntry(
+                    event_type="tool_call",
+                    tool_name=tool,
+                    agent_id="a1",
+                    action="allow",
+                    outcome="success",
+                )
+            )
+        await logger.log(
+            AuditEntry(
+                event_type="security_alert",
+                tool_name="alpha",
                 agent_id="a1",
-                action="allow",
-                outcome="success",
-            ))
-        await logger.log(AuditEntry(
-            event_type="security_alert",
-            tool_name="alpha",
-            agent_id="a1",
-            action="deny",
-            outcome="blocked",
-        ))
+                action="deny",
+                outcome="blocked",
+            )
+        )
 
         # Filter by tool name
         alphas = await logger.query(tool_name="alpha")

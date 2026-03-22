@@ -6,10 +6,10 @@ import csv
 import io
 import time
 
-from mcpguard.audit.exporter import AuditExportFormat, export_audit_logs
-from mcpguard.audit.logger import AuditEntry
-from mcpguard.policy.engine import PolicyAction, PolicyEngine, PolicyRule
-from mcpguard.proxy.rate_limit import InMemoryRateLimiter
+from mcpkernel.audit.exporter import AuditExportFormat, export_audit_logs
+from mcpkernel.audit.logger import AuditEntry
+from mcpkernel.policy.engine import PolicyAction, PolicyEngine, PolicyRule
+from mcpkernel.proxy.rate_limit import InMemoryRateLimiter
 
 
 # ---------------------------------------------------------------------------
