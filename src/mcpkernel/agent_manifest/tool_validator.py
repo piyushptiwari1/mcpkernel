@@ -100,14 +100,14 @@ class ToolSchemaValidator:
         schema = self._schemas.get(tool_name)
         if schema is None:
             return False
-        return schema.annotations.get("read_only", False)
+        return bool(schema.annotations.get("read_only", False))
 
     def requires_confirmation(self, tool_name: str) -> bool:
         """Check if a tool requires user confirmation before execution."""
         schema = self._schemas.get(tool_name)
         if schema is None:
             return False
-        return schema.annotations.get("requires_confirmation", False)
+        return bool(schema.annotations.get("requires_confirmation", False))
 
 
 def _check_type(field_name: str, value: Any, prop_def: dict[str, Any]) -> list[str]:

@@ -76,16 +76,189 @@ Point your MCP client to `http://localhost:8000/mcp` instead of targeting tool s
 
 ---
 
-## Use Cases
+## Use Cases — Guided Setup
 
-| Scenario | How MCPKernel Helps |
-|----------|-------------------|
-| **AI Coding Assistants** | Intercepts Copilot/Cursor tool calls, blocks dangerous file writes, prevents secret exfiltration |
-| **Autonomous Agents** | Policy-enforces LangChain/CrewAI/AutoGen tool usage, sandboxes code execution |
-| **Enterprise MCP Deployments** | OWASP ASI compliance, tamper-proof audit trails, SIEM integration |
-| **Research Reproducibility** | Deterministic execution envelopes — every result is signed and replayable |
-| **Multi-Agent Workflows** | Cross-tool taint tracking — PII in one tool's output can't leak to another's HTTP call |
-| **Regulated Industries** | Append-only audit logs, integrity verification, CEF export for security teams |
+### 1. Secure AI Coding Assistants (Copilot, Cursor, Windsurf)
+
+Prevent your coding assistant from exfiltrating secrets or overwriting critical files.
+
+```bash
+pip install "mcpkernel[all]"
+mcpkernel init
+```
+
+Add a policy to block sensitive file access:
+
+```yaml
+# .mcpkernel/policies/coding_assistant.yaml
+rules:
+  - id: CA-001
+    name: Block secret file reads
+    action: deny
+    tool_patterns: ["read_file", "file_read"]
+    arg_patterns:
+      path: ".*\\.(env|pem|key|credentials)$"
+
+  - id: CA-002
+    name: Block outbound HTTP with tainted data
+    action: deny
+    tool_patterns: ["http_post", "http_request", "fetch"]
+    taint_labels: [secret, pii]
+```
+
+Start the gateway and point your MCP client to it:
+
+```bash
+mcpkernel serve --port 8000
+# In your editor's MCP config: http://localhost:8000/mcp
+```
+
+---
+
+### 2. Autonomous Agent Frameworks (LangChain, CrewAI, AutoGen)
+
+Sandbox every tool call your agents make — no code runs on bare metal.
+
+```bash
+pip install "mcpkernel[docker]"
+mcpkernel init
+```
+
+Configure Docker sandboxing:
+
+```yaml
+# .mcpkernel/config.yaml
+sandbox:
+  backend: docker
+  timeout_seconds: 30
+
+policy:
+  default_action: audit   # log everything, deny dangerous calls
+```
+
+Route your framework through MCPKernel:
+
+```python
+import httpx
+
+# Instead of calling tools directly, route through MCPKernel
+result = httpx.post("http://localhost:8000/mcp", json={
+    "method": "tools/call",
+    "params": {"name": "execute_code", "arguments": {"code": "print('hello')"}}
+})
+```
+
+See full examples: [LangChain](examples/langchain/), [CrewAI](examples/crewai/), [AutoGen](examples/autogen/)
+
+---
+
+### 3. Enterprise MCP Deployments (OWASP ASI Compliance)
+
+Deploy MCPKernel as the central chokepoint with strict OWASP ASI 2026 policies.
+
+```bash
+pip install "mcpkernel[all]"
+mcpkernel init
+
+# Apply the strict OWASP policy set
+cp policies/owasp_asi_2026_strict.yaml .mcpkernel/policies/
+```
+
+```yaml
+# .mcpkernel/config.yaml
+policy:
+  default_action: deny   # deny-by-default for production
+  policy_paths:
+    - .mcpkernel/policies/owasp_asi_2026_strict.yaml
+
+observability:
+  metrics_enabled: true
+  otlp_endpoint: "http://your-otel-collector:4317"
+```
+
+Export audit logs to your SIEM:
+
+```bash
+mcpkernel audit-query --format cef > siem_export.log
+mcpkernel audit-verify  # verify tamper-proof chain
+```
+
+---
+
+### 4. Research Reproducibility (Deterministic Execution)
+
+Every tool call is hashed and Sigstore-signed — replay any execution exactly.
+
+```bash
+pip install mcpkernel
+mcpkernel serve
+```
+
+After running your experiment through MCPKernel:
+
+```bash
+# List all traces
+mcpkernel trace-list
+
+# Export a trace for your paper's appendix
+mcpkernel trace-export <trace-id> > experiment_trace.json
+
+# Replay and verify — detects any drift
+mcpkernel replay <trace-id>
+```
+
+The Deterministic Execution Envelope (DEE) ensures reviewers can verify your results independently.
+
+---
+
+### 5. Multi-Agent Workflows (Cross-Tool Taint Tracking)
+
+Prevent PII from leaking across tool boundaries in multi-agent pipelines.
+
+```yaml
+# .mcpkernel/policies/taint_isolation.yaml
+rules:
+  - id: TAINT-001
+    name: Block PII in outbound calls
+    action: deny
+    tool_patterns: ["http_post", "send_email", "slack_message"]
+    taint_labels: [pii, secret]
+
+  - id: TAINT-002
+    name: Audit all user input propagation
+    action: audit
+    taint_labels: [user_input]
+```
+
+MCPKernel tracks taint labels (secrets, PII, user input) across tool calls — if Agent A's database query returns SSNs, Agent B's HTTP POST is automatically blocked from sending them.
+
+---
+
+### 6. Regulated Industries (FINRA, SEC, Federal Reserve)
+
+Use agent manifests for automated compliance enforcement.
+
+```bash
+# Validate your agent's compliance declarations
+mcpkernel manifest-validate /path/to/agent-repo
+
+# Import and generate policy rules from agent.yaml
+mcpkernel manifest-import /path/to/agent-repo > compliance_rules.yaml
+```
+
+MCPKernel reads your `agent.yaml` and auto-generates policy rules for:
+- Risk tier classification and supervision requirements
+- Data governance and communications monitoring
+- Segregation of duties enforcement
+- Recordkeeping and audit trail requirements
+- Framework-specific rules (FINRA, SEC, Federal Reserve)
+
+Append-only audit logs with integrity verification provide the evidence trail regulators require:
+
+```bash
+mcpkernel audit-query --event-type policy_violation --format cef
+mcpkernel audit-verify
+```
 
 ---
 
@@ -283,9 +456,35 @@ MCPKernel is a **runtime security gateway** — it sits in the live request path
 
 ---
 
-## Contributing
+## Contributing — You're Welcome Here
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and PR guidelines.
+MCPKernel is built in the open and we actively welcome contributions of all kinds — bug reports, feature ideas, documentation improvements, policy templates, and code.
+
+**Ways to contribute:**
+
+| What | How |
+|------|-----|
+| Report a bug | [Open an issue](https://github.com/piyushptiwari1/mcpkernel/issues/new) with steps to reproduce |
+| Suggest a feature | [Open an issue](https://github.com/piyushptiwari1/mcpkernel/issues/new) describing your use case |
+| Add a policy template | Create a YAML file in `policies/` for your domain (healthcare, fintech, etc.) |
+| Add a framework example | Add to `examples/` — we'd love OpenAI Agents SDK, Semantic Kernel, etc. |
+| Improve documentation | Docs, README, and inline comments always need help |
+| Write tests | We target >90% coverage — every new test helps |
+| Fix a bug or add a feature | Fork → branch → test → PR (see below) |
+
+**Getting started in 60 seconds:**
+
+```bash
+git clone https://github.com/piyushptiwari1/mcpkernel.git
+cd mcpkernel
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev,all]"
+pytest  # 443 tests, all should pass
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow, commit conventions, and PR process.
+
+Not sure where to start? Look for issues labeled **`good first issue`** or **`help wanted`**, or just open a discussion — we're happy to point you to something that fits your interest.
 
 ---
 
