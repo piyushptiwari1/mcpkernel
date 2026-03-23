@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import typer
 
 from mcpkernel import __version__
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from mcpkernel.policy.engine import PolicyRule
 
 app = typer.Typer(
     name="mcpkernel",
@@ -368,7 +373,7 @@ def manifest_validate(
         typer.echo("  Compliance: not configured")
 
 
-def _export_rules_yaml(rules: list[object], output_path: Path) -> None:
+def _export_rules_yaml(rules: Sequence[PolicyRule], output_path: Path) -> None:
     """Export policy rules as a YAML file compatible with MCPKernel policy loader."""
     import yaml
 

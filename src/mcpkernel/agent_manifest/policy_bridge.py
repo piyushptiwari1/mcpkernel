@@ -128,7 +128,7 @@ def _risk_tier_rules(compliance: ComplianceConfig, agent_name: str) -> list[Poli
 
 def _supervision_rules(compliance: ComplianceConfig, agent_name: str) -> list[PolicyRule]:
     """Map HITL/kill-switch/escalation to policy rules."""
-    rules = []
+    rules: list[PolicyRule] = []
     supervision = compliance.supervision
 
     if not supervision:
@@ -168,7 +168,7 @@ def _supervision_rules(compliance: ComplianceConfig, agent_name: str) -> list[Po
 
 def _data_governance_rules(compliance: ComplianceConfig, agent_name: str) -> list[PolicyRule]:
     """Map PII handling / data classification to taint rules."""
-    rules = []
+    rules: list[PolicyRule] = []
     dg = compliance.data_governance
 
     if not dg:
@@ -212,7 +212,7 @@ def _data_governance_rules(compliance: ComplianceConfig, agent_name: str) -> lis
 
 def _communications_rules(compliance: ComplianceConfig, agent_name: str) -> list[PolicyRule]:
     """Map FINRA 2210 communications rules."""
-    rules = []
+    rules: list[PolicyRule] = []
     comms = compliance.communications
 
     if not comms:
@@ -242,7 +242,7 @@ def _sod_rules(compliance: ComplianceConfig, agent_name: str) -> list[PolicyRule
     validation (requires ≥2 roles), and isolation recommendations for
     high/critical tiers.
     """
-    rules = []
+    rules: list[PolicyRule] = []
     sod = compliance.segregation_of_duties
 
     if not sod:
@@ -322,7 +322,7 @@ def _sod_rules(compliance: ComplianceConfig, agent_name: str) -> list[PolicyRule
 
 def _recordkeeping_rules(compliance: ComplianceConfig, agent_name: str) -> list[PolicyRule]:
     """Generate rules from the recordkeeping configuration."""
-    rules = []
+    rules: list[PolicyRule] = []
     rk = compliance.recordkeeping
 
     if not rk:
@@ -350,7 +350,7 @@ def _recordkeeping_rules(compliance: ComplianceConfig, agent_name: str) -> list[
 
 def _model_risk_rules(compliance: ComplianceConfig, agent_name: str) -> list[PolicyRule]:
     """Generate rules from model_risk configuration."""
-    rules = []
+    rules: list[PolicyRule] = []
     mr = compliance.model_risk
 
     if not mr:

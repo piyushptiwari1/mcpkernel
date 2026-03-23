@@ -1,6 +1,6 @@
 # MCPKernel — Project Kanban
 
-> Last updated: 2026-03-21
+> Last updated: 2026-03-23
 
 ---
 
@@ -8,9 +8,8 @@
 
 | ID | Task | Blocker | ETA | Notes |
 |----|------|---------|-----|-------|
-| K-001 | **Publish to PyPI** as `mcpkernel` | Email not working — cannot confirm PyPI account | 5–20 days from 2026-03-21 | Publish name: `mcpkernel` (import name stays `mcpkernel`). The PyPI name `mcpkernel` is taken by `aryanjp1/mcpkernel` (config scanner, 0 stars). Consider PEP 541 claim later. |
-| K-002 | **List on libraries.io** | Blocked by K-001 — auto-indexes from PyPI | After K-001 | libraries.io automatically picks up packages once published on PyPI. No manual action needed. |
-| K-003 | **List on piwheels** | Blocked by K-001 — auto-builds from PyPI for Raspberry Pi | After K-001 | piwheels.org builds ARM wheels automatically from PyPI. Ensure pure-Python or add ARM build matrix. |
+| K-002 | **List on libraries.io** | Auto-indexes from PyPI (may take 24-48h) | Auto | libraries.io automatically picks up packages once published on PyPI. No manual action needed. |
+| K-003 | **List on piwheels** | Auto-builds from PyPI for Raspberry Pi | Auto | piwheels.org builds ARM wheels automatically from PyPI. Pure-Python wheel — should work on all platforms. |
 | K-004 | **Set GitHub repo About & Topics** | `gh` CLI not authenticated on this machine | User action | See instructions below. |
 
 ### K-004 Instructions — GitHub About & Topics
@@ -53,7 +52,7 @@ gh repo edit piyushptiwari1/mcpkernel \
 
 | # | Task | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| M-1 | Confirm email + publish `mcpkernel` v0.1.0 to PyPI | **P0** | Blocked (email) | Tag `v0.1.0-simple`. |
+| M-1 | ~~Confirm email + publish `mcpkernel` v0.1.0 to PyPI~~ | **P0** | **Done** ✅ | Published 2026-03-23. https://pypi.org/project/mcpkernel/0.1.0/ |
 | M-2 | Add CI badges (PyPI version, coverage, tests) to README | P1 | Not started | codecov or coveralls + PyPI badge after M-1. |
 | M-3 | Record 5-minute YouTube demo | P1 | Not started | "The security kernel for AI agents." |
 | M-4 | Post to Reddit r/MachineLearning, r/LocalLLaMA | P1 | After M-1 | "Stop your code from leaking into any LLM — one command." |
@@ -67,7 +66,8 @@ gh repo edit piyushptiwari1/mcpkernel \
 
 | ID | Task | Owner | Notes |
 |----|------|-------|-------|
-| — | (nothing currently in progress) | | |
+| K-002 | libraries.io auto-indexing | Auto | Waiting for PyPI crawl (24-48h) |
+| K-003 | piwheels auto-build | Auto | Waiting for PyPI crawl |
 
 ---
 
@@ -75,6 +75,8 @@ gh repo edit piyushptiwari1/mcpkernel \
 
 | ID | Task | Date | Notes |
 |----|------|------|-------|
+| D-007 | **Published to PyPI** | 2026-03-23 | `mcpkernel` v0.1.0 — https://pypi.org/project/mcpkernel/0.1.0/ |
+| D-008 | Agent manifest module | 2026-03-23 | 5 source files, 98 new tests (443 total), 89.38% coverage. Full 16-agent pipeline pass. |
 | D-006 | Rename to MCPKernel | 2026-03-22 | Full codebase rename mcpguard → mcpseal → mcpkernel. |
 | D-009 | 1-week milestones added to kanban | 2026-03-21 | PyPI, badges, YouTube, Reddit, HN posting plan. |
 | D-001 | CI mypy fix | 2026-03-21 | Fixed `docker_backend.py` unused-ignore error. Commit `a44506c`. |
