@@ -6,7 +6,7 @@ MCPKernel is an open-source **Execution Sovereignty Stack** — a mandatory, det
 **Repository**: `piyushptiwari1/mcpkernel`
 
 ## Architecture
-- **10 packages** in `src/mcpkernel/`: proxy, sandbox, dee, taint, context, ebpf, policy, audit, observability, cli
+- **11 packages** in `src/mcpkernel/`: proxy, sandbox, dee, taint, context, ebpf, policy, audit, observability, cli, agent_manifest
 - **Proxy**: AsyncIO MCP/A2A transparent gateway with SSE/stdio transport
 - **Policy**: YAML-based rules engine with OWASP ASI 2026 mappings
 - **Taint**: Multi-mode taint tracking (FULL/LIGHT/OFF) for secrets, PII, user input
@@ -16,13 +16,14 @@ MCPKernel is an open-source **Execution Sovereignty Stack** — a mandatory, det
 - **Context**: Environment snapshots and drift detection
 - **Observability**: OpenTelemetry metrics and Prometheus export
 - **eBPF**: Kernel-level syscall filtering
+- **Agent Manifest**: agent.yaml loader, policy bridge, tool validator, proxy hook
 
 ## Code Standards
 - Python >=3.12 (tested on 3.12 and 3.13, developed on 3.13.12)
 - Async-first using `asyncio`
 - Type hints on all public APIs
 - Tests in `tests/` using `pytest` with async support
-- All 291 tests must pass before merging to main
+- All 443 tests must pass before merging to main
 - Coverage must be ≥80% (`python -m pytest --cov=mcpkernel`)
 - Lint clean: `ruff check src/ tests/` must show zero errors
 - Format clean: `ruff format --check src/ tests/` must pass
@@ -63,6 +64,7 @@ mypy src/mcpkernel/
 - `CONTRIBUTING.md` — Contribution guidelines
 - `pyproject.toml` — Project metadata and dependencies
 - `policies/` — Example YAML policy files
+- `src/mcpkernel/agent_manifest/` — Agent manifest loader, policy bridge, tool validator, hooks
 
 ## Agent Team Guidelines
 - When making changes, always run `python -m pytest tests/ -v --tb=short` to validate

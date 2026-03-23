@@ -58,6 +58,7 @@ AI agents (LangChain, CrewAI, AutoGen, Copilot) call tools autonomously — read
 - **Rate Limiting** — per-identity token bucket with LRU eviction
 - **Prometheus Metrics + OpenTelemetry** — full observability out of the box
 - **Optional eBPF Probes** — kernel-level syscall monitoring at MCP boundaries
+- **Agent Manifest Integration** — load `agent.yaml` definitions, convert compliance declarations (FINRA/SEC/Federal Reserve) to policy rules, validate tool schemas, and block undeclared tools at runtime via proxy hook
 
 ---
 
@@ -101,6 +102,7 @@ src/mcpkernel/
 ├── context/        # Token-efficient context reduction via TF-IDF + AST pruning
 ├── ebpf/           # Optional kernel-level syscall monitoring (BCC probes)
 ├── observability/  # Prometheus metrics, OpenTelemetry tracing, health checks
+├── agent_manifest/ # agent.yaml loader, compliance-to-policy bridge, tool schema validator
 ├── config.py       # Pydantic v2 hierarchical config (YAML → env → CLI)
 ├── cli.py          # Typer CLI — serve, scan, replay, audit, init
 └── utils.py        # Hashing, exceptions, structured logging
@@ -150,6 +152,8 @@ rules:
 | `mcpkernel audit-query` | Query audit logs with filters |
 | `mcpkernel audit-verify` | Verify audit log integrity |
 | `mcpkernel config-show` | Show effective configuration |
+| `mcpkernel manifest-import <path>` | Import agent.yaml from a repo, convert to policy rules, export YAML |
+| `mcpkernel manifest-validate <path>` | Validate agent.yaml + tool schemas, report compliance status |
 
 ---
 
@@ -205,7 +209,7 @@ git clone https://github.com/piyushptiwari1/mcpkernel.git
 cd mcpkernel
 pip install -e ".[dev]"
 
-# Run tests (345 tests, 86% coverage)
+# Run tests (443 tests, ~89% coverage)
 pytest tests/ -v --cov=mcpkernel
 
 # Lint

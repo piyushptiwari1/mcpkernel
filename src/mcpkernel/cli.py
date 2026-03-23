@@ -294,5 +294,105 @@ def init(
     typer.echo(f"  Policies: {policies_dir}")
 
 
+# ── Agent Manifest Integration ────────────────────────────────────────
+@app.command()
+def manifest_import(
+    repo_path: Annotated[Path, typer.Argument(help="Path to a repository with agent.yaml")],
+    output: Annotated[Path | None, typer.Option("-o", "--output", help="Output policy YAML file")] = None,
+) -> None:
+    """Import an agent manifest definition and generate MCPKernel policy rules."""
+    from mcpkernel.agent_manifest.loader import load_agent_manifest
+    from mcpkernel.agent_manifest.policy_bridge import manifest_to_policy_rules
+
+    try:
+        definition = load_agent_manifest(repo_path)
+    except Exception as exc:
+        typer.echo(f"✗ Failed to load agent manifest: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    rules = manifest_to_policy_rules(definition)
+
+    typer.echo(f"✓ Loaded agent manifest: {definition.name} v{definition.version}")
+    typer.echo(f"  Description: {definition.description}")
+    if definition.compliance:
+        typer.echo(f"  Risk tier: {definition.compliance.risk_tier}")
+        typer.echo(f"  Frameworks: {', '.join(definition.compliance.frameworks) or 'none'}")
+    typer.echo(f"  Generated {len(rules)} MCPKernel policy rule(s):")
+    for rule in rules:
+        typer.echo(f"    [{rule.id}] {rule.name} → {rule.action.value}")
+
+    if output:
+        _export_rules_yaml(rules, output)
+        typer.echo(f"  Exported to {output}")
+
+
+@app.command()
+def manifest_validate(
+    repo_path: Annotated[Path, typer.Argument(help="Path to a repository with agent.yaml")],
+) -> None:
+    """Validate an agent manifest definition and its tool schemas."""
+    from mcpkernel.agent_manifest.loader import load_agent_manifest
+    from mcpkernel.agent_manifest.tool_validator import ToolSchemaValidator
+
+    try:
+        definition = load_agent_manifest(repo_path)
+    except Exception as exc:
+        typer.echo(f"✗ Validation failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    validator = ToolSchemaValidator(definition)
+
+    typer.echo(f"✓ agent.yaml valid: {definition.name} v{definition.version}")
+    if definition.soul_md:
+        typer.echo(f"  SOUL.md: {len(definition.soul_md)} chars")
+    if definition.rules_md:
+        typer.echo(f"  RULES.md: {len(definition.rules_md)} chars")
+    typer.echo(f"  Skills: {len(definition.skills)}")
+    typer.echo(f"  Tools declared: {len(definition.tools_list)}")
+    typer.echo(f"  Tool schemas loaded: {len(definition.tool_schemas)}")
+    if definition.hooks:
+        typer.echo(f"  Hooks: {len(definition.hooks)}")
+    if definition.sub_agents:
+        typer.echo(f"  Sub-agents: {len(definition.sub_agents)}")
+
+    if validator.known_tools:
+        typer.echo("  Tool schemas:")
+        for tool_name in validator.known_tools:
+            read_only = "read-only" if validator.is_read_only(tool_name) else "read-write"
+            confirm = " (confirmation required)" if validator.requires_confirmation(tool_name) else ""
+            typer.echo(f"    • {tool_name} [{read_only}]{confirm}")
+
+    if definition.compliance:
+        typer.echo(f"  Compliance: risk_tier={definition.compliance.risk_tier}")
+    else:
+        typer.echo("  Compliance: not configured")
+
+
+def _export_rules_yaml(rules: list[object], output_path: Path) -> None:
+    """Export policy rules as a YAML file compatible with MCPKernel policy loader."""
+    import yaml
+
+    data = {
+        "rules": [
+            {
+                "id": r.id,
+                "name": r.name,
+                "description": r.description,
+                "action": r.action.value,
+                "priority": r.priority,
+                "tool_patterns": r.tool_patterns,
+                "taint_labels": r.taint_labels,
+                "owasp_asi_id": r.owasp_asi_id,
+                "conditions": r.conditions,
+            }
+            for r in rules
+        ]
+    }
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w") as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
+
 if __name__ == "__main__":
     app()
