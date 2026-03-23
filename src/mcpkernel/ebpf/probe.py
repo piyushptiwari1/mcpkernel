@@ -136,7 +136,7 @@ class EBPFProbe:
         logger.info("eBPF probes started")
 
         # Start polling in background
-        asyncio.get_event_loop().run_in_executor(None, self._poll_loop)
+        asyncio.get_running_loop().run_in_executor(None, self._poll_loop)
 
     def _poll_loop(self) -> None:
         """Poll perf buffer for events (runs in thread)."""

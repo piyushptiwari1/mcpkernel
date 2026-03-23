@@ -177,12 +177,81 @@ All configuration can be overridden with environment variables:
 
 ---
 
+## Agent Manifest Integration
+
+MCPKernel can load `agent.yaml` manifest files that declare an agent's identity, tools, compliance requirements, and operational constraints. The manifest is converted into runtime policy rules and enforced automatically.
+
+### What is `agent.yaml`?
+
+An `agent.yaml` file lives at the root of an agent repository and describes:
+
+- **Agent identity** — name, version, description, tags, metadata
+- **Tools** — declared tool names with JSON Schema for argument validation
+- **Compliance** — risk tier, supervision level, data governance, communications policies, segregation of duties, recordkeeping, model risk, vendor management
+- **Framework mappings** — FINRA, SEC, and Federal Reserve regulatory frameworks
+- **Extensions** — SOUL.md, RULES.md, hooks.yaml, skills, sub-agents, A2A config, dependencies
+
+### CLI Commands
+
+**Import a manifest and generate policy rules:**
+
+```bash
+mcpkernel manifest-import /path/to/agent-repo
+```
+
+This loads `agent.yaml` from the given directory, converts compliance declarations into MCPKernel `PolicyRule` objects, and outputs the generated YAML rules.
+
+**Validate a manifest and its tool schemas:**
+
+```bash
+mcpkernel manifest-validate /path/to/agent-repo
+```
+
+This checks that the manifest is well-formed, all tool schemas are valid, and reports the compliance status.
+
+### Proxy Hook — `AgentManifestHook`
+
+When running the MCPKernel proxy, the `AgentManifestHook` (priority 950) integrates with the plugin pipeline to:
+
+1. **Block undeclared tools** — if a tool call targets a tool not listed in the manifest, it is denied
+2. **Enforce schema validation** — tool-call arguments are validated against declared JSON Schemas (type checking, enum validation, required fields)
+
+The hook is a `PluginHook` subclass and runs in the `pre_execution` phase of the proxy pipeline.
+
+### Programmatic Usage
+
+```python
+from mcpkernel.agent_manifest import (
+    load_agent_manifest,
+    manifest_to_policy_rules,
+    ToolSchemaValidator,
+)
+
+# Load a manifest from a repo directory
+definition = load_agent_manifest("/path/to/agent-repo")
+print(f"Agent: {definition.name} v{definition.version}")
+
+# Convert compliance config to MCPKernel policy rules
+rules = manifest_to_policy_rules(definition)
+for rule in rules:
+    print(f"  Rule: {rule.id} — {rule.name} [{rule.action}]")
+
+# Validate a tool call against declared schemas
+validator = ToolSchemaValidator(definition)
+errors = validator.validate("my_tool", {"arg1": "value"})
+if errors:
+    print(f"Schema violations: {errors}")
+```
+
+---
+
 ## Integration Examples
 
 See the `examples/` directory for:
 
 - **`langchain_example.py`** — LangChain agent with MCPKernel
 - **`crewai_example.py`** — CrewAI tools via MCPKernel
+- **`autogen_example.py`** — AutoGen multi-agent conversations via MCPKernel
 - **`copilot_guard_example.py`** — AI coding assistant protection
 
 ---
