@@ -253,6 +253,379 @@ See the `examples/` directory for:
 - **`crewai_example.py`** — CrewAI tools via MCPKernel
 - **`autogen_example.py`** — AutoGen multi-agent conversations via MCPKernel
 - **`copilot_guard_example.py`** — AI coding assistant protection
+- **`mcp_agent/`** — mcp-agent framework connected through MCPKernel proxy
+
+---
+
+## Third-Party Integrations
+
+MCPKernel integrates with external tools to form a complete agent security pipeline:
+
+```
+BUILD          SCAN              PROTECT          CONNECT           OBSERVE         TEST
+FastMCP ──▶ Snyk Agent Scan ──▶ MCPKernel ──▶ AI Agents ──▶ Langfuse ──▶ promptfoo
+python-sdk   (static scan)     (runtime gate)  (LangChain,    (traces,     (prompt
+                                               CrewAI, etc)    metrics)     testing)
+```
+
+All integrations live in `src/mcpkernel/integrations/` and follow a consistent pattern:
+- Graceful fallback when optional dependencies aren't installed
+- Async-first APIs
+- Configurable via YAML config or environment variables
+- CLI commands for common operations
+
+---
+
+### Langfuse — Observability Export
+
+[Langfuse](https://langfuse.com) is an open-source LLM observability platform. MCPKernel exports audit entries and DEE traces to Langfuse for visualization and analytics.
+
+**Configuration:**
+
+```yaml
+# .mcpkernel/config.yaml
+langfuse:
+  enabled: true
+  public_key: pk-lf-...          # Langfuse public key
+  secret_key: sk-lf-...          # Langfuse secret key
+  host: https://cloud.langfuse.com  # or self-hosted URL
+  project_name: mcpkernel
+  batch_size: 50                 # Events batched before flush
+  flush_interval_seconds: 5.0    # Auto-flush interval
+```
+
+**Environment variables:**
+
+```bash
+export MCPKERNEL_LANGFUSE__ENABLED=true
+export MCPKERNEL_LANGFUSE__PUBLIC_KEY=pk-lf-...
+export MCPKERNEL_LANGFUSE__SECRET_KEY=sk-lf-...
+export MCPKERNEL_LANGFUSE__HOST=https://cloud.langfuse.com
+```
+
+**CLI — Export audit entries to Langfuse:**
+
+```bash
+$ mcpkernel langfuse-export --limit 50
+
+✓ Exported 50 audit entries to Langfuse (https://cloud.langfuse.com)
+```
+
+Each audit entry maps to a Langfuse trace:
+- `tool_call` events → **trace-create** (one trace per tool invocation, tagged with tool name, outcome, policy action)
+- Other events → **event-create** (attached to the trace)
+- DEE traces → **trace-create + span-create** (includes input/output hashes, duration, signed status)
+
+**Automatic export during proxy operation:**
+
+When Langfuse is enabled and MCPKernel is running as a proxy, every tool call is automatically exported to Langfuse via the `ObservabilityHook`. No manual export needed.
+
+**Programmatic usage:**
+
+```python
+from mcpkernel.integrations.langfuse import LangfuseConfig, LangfuseExporter
+
+config = LangfuseConfig(
+    enabled=True,
+    public_key="pk-lf-...",
+    secret_key="sk-lf-...",
+)
+exporter = LangfuseExporter(config=config)
+await exporter.start()
+
+# Export audit entries
+await exporter.export_audit_entries(entries)
+await exporter.flush()
+await exporter.shutdown()
+```
+
+---
+
+### Guardrails AI — Enhanced Taint Detection
+
+[Guardrails AI](https://guardrailsai.com) provides production-grade input/output validation. MCPKernel plugs Guardrails validators into the taint detection pipeline for higher-accuracy PII, secret, and toxicity detection.
+
+**Installation:**
+
+```bash
+pip install guardrails-ai
+guardrails hub install hub://guardrails/detect_pii
+guardrails hub install hub://guardrails/secrets_present
+# Optional: guardrails hub install hub://guardrails/toxic_language
+```
+
+**Configuration:**
+
+```yaml
+# .mcpkernel/config.yaml
+guardrails_ai:
+  enabled: true
+  pii_validator: true        # Detect PII (email, SSN, credit card, phone, etc.)
+  secrets_validator: true    # Detect secrets (API keys, tokens, etc.)
+  toxic_content: false       # Detect toxic language (requires model download)
+  on_fail: noop              # noop = detect + tag only, exception = block the call
+```
+
+**How it works:**
+
+When enabled, the `TaintHook` in the proxy pipeline runs Guardrails validators alongside MCPKernel's built-in regex patterns:
+
+1. Built-in regex patterns run first (fast, zero dependencies)
+2. Guardrails AI validators run second (higher accuracy, catches more entity types)
+3. All detections are merged into the taint label set
+4. Policy rules evaluate against the combined labels
+
+**Detected entities:**
+
+| Validator | Entity Types |
+|-----------|-------------|
+| `DetectPII` | EMAIL_ADDRESS, PHONE_NUMBER, CREDIT_CARD, US_SSN, PERSON, LOCATION, IP_ADDRESS, IBAN_CODE, MEDICAL_LICENSE |
+| `SecretsPresent` | API keys, tokens, passwords, connection strings |
+| `ToxicLanguage` | Toxic, hateful, threatening, or explicit content |
+
+**Programmatic usage:**
+
+```python
+from mcpkernel.integrations.guardrails import GuardrailsConfig, GuardrailsValidator
+
+config = GuardrailsConfig(enabled=True, pii_validator=True)
+validator = GuardrailsValidator(config=config)
+
+if validator.available:
+    # Scan a string
+    detections = await validator.validate_text("Call me at 555-0123")
+    # detections = [GuardrailsDetection(label=TaintLabel.PII, entity_type="PHONE_NUMBER", ...)]
+
+    # Scan all strings in a dict (recursive)
+    detections = await validator.validate_dict({"user": {"email": "test@example.com"}})
+```
+
+If `guardrails-ai` is not installed, `validator.available` returns `False` and all calls return empty lists — no errors, no crashes.
+
+---
+
+### MCP Server Registry — Discovery & Validation
+
+The [MCP Server Registry](https://registry.modelcontextprotocol.io) is the official directory of MCP servers. MCPKernel provides a client for searching, listing, and validating servers.
+
+**Configuration:**
+
+```yaml
+# .mcpkernel/config.yaml
+registry:
+  enabled: true
+  registry_url: https://registry.modelcontextprotocol.io
+  cache_ttl_seconds: 300     # Cache list results for 5 minutes
+  timeout_seconds: 10.0
+```
+
+**CLI — Search for servers:**
+
+```bash
+$ mcpkernel registry-search filesystem
+
+Found 3 server(s) matching 'filesystem':
+
+  @modelcontextprotocol/server-filesystem ✓
+    Secure file system access for AI agents
+    Transports: stdio
+    Install: npx @modelcontextprotocol/server-filesystem
+
+  @anthropic/files
+    Read and write files with permission controls
+    Transports: stdio, streamable_http
+
+  community/local-fs
+    Lightweight local file system server
+    Transports: stdio
+```
+
+The `✓` badge indicates a verified server in the registry.
+
+**CLI — List all available servers:**
+
+```bash
+$ mcpkernel registry-list --limit 10
+
+MCP Server Registry — 10 server(s):
+
+  @modelcontextprotocol/server-filesystem ✓ [files, system]
+  @modelcontextprotocol/server-github ✓ [git, api]
+  @modelcontextprotocol/server-postgres ✓ [database]
+  @modelcontextprotocol/server-slack ✓ [messaging]
+  ...
+```
+
+**Programmatic usage:**
+
+```python
+from mcpkernel.integrations.registry import MCPRegistry
+
+registry = MCPRegistry()
+
+# Search
+servers = await registry.search("database")
+
+# Get details
+server = await registry.get_server("@modelcontextprotocol/server-postgres")
+print(server.name, server.description, server.transport)
+
+# Validate a server exists
+result = await registry.validate_server("@modelcontextprotocol/server-filesystem")
+# result = {"valid": True, "verified": True, "version": "1.0.0", ...}
+
+await registry.close()
+```
+
+---
+
+### Snyk Agent Scan — Static Security Scanning
+
+[Snyk Agent Scan](https://snyk.io) (formerly mcp-scan) performs static security analysis on MCP server configurations. MCPKernel bridges to the CLI tool and auto-generates policy rules from findings.
+
+**Prerequisites:**
+
+```bash
+npm install -g @anthropic/agent-scan
+```
+
+**Configuration:**
+
+```yaml
+# .mcpkernel/config.yaml
+agent_scan:
+  enabled: true
+  binary_name: agent-scan       # Binary name on PATH
+  timeout_seconds: 120          # Scan timeout
+  auto_generate_policy: true    # Auto-generate MCPKernel deny/log rules from findings
+```
+
+**CLI — Scan a directory or config file:**
+
+```bash
+$ mcpkernel agent-scan .mcpkernel/
+
+Found 2 issue(s):
+
+  🔴 [CRITICAL] Prompt injection vulnerability
+    Server: filesystem
+    Tool: read_file
+    Fix: Add input validation for path arguments
+
+  🟡 [MEDIUM] Tool shadowing detected
+    Server: custom-tools
+    Tool: execute
+    Fix: Rename tool to avoid shadowing built-in
+
+Generated 2 policy rule(s) from findings.
+```
+
+**Export generated rules to a policy file:**
+
+```bash
+$ mcpkernel agent-scan .mcpkernel/ -o .mcpkernel/policies/scan_rules.yaml
+
+Found 2 issue(s):
+  ...
+Generated 2 policy rule(s) from findings.
+  Exported to .mcpkernel/policies/scan_rules.yaml
+```
+
+The generated YAML contains rules like:
+
+```yaml
+rules:
+  - id: SCAN-PJ-001
+    name: "[Agent Scan] Prompt injection vulnerability"
+    description: "Auto-generated from agent-scan finding..."
+    action: deny
+    tool_patterns:
+      - read_file
+
+  - id: SCAN-TS-002
+    name: "[Agent Scan] Tool shadowing detected"
+    description: "Auto-generated from agent-scan finding..."
+    action: log
+    tool_patterns:
+      - "custom-tools:.*"
+```
+
+Severity mapping:
+- **critical / high** → `deny` (blocks tool calls)
+- **medium** → `log` (allows but logs the call)
+- **low / info** → `audit` (recorded for review)
+
+**Programmatic usage:**
+
+```python
+from mcpkernel.integrations.agent_scan import AgentScanner
+from pathlib import Path
+
+scanner = AgentScanner()
+
+if scanner.available:
+    report = await scanner.scan_directory(Path(".mcpkernel/"))
+    print(f"Found {len(report.findings)} issues, {report.critical_count} critical")
+
+    if report.has_blockers:
+        rules = scanner.report_to_policy_rules(report)
+        print(f"Generated {len(rules)} policy rules")
+```
+
+---
+
+### Full Integration Configuration Reference
+
+All integration options in one place:
+
+```yaml
+# .mcpkernel/config.yaml
+
+# ── Langfuse (Observability Export) ──
+langfuse:
+  enabled: false                          # Enable Langfuse export
+  public_key: ""                          # pk-lf-...
+  secret_key: ""                          # sk-lf-...
+  host: https://cloud.langfuse.com        # API host
+  project_name: mcpkernel                 # Project label
+  batch_size: 50                          # Batch before flush
+  flush_interval_seconds: 5.0             # Auto-flush interval
+  max_retries: 3                          # Retry on 429 / errors
+  timeout_seconds: 10.0                   # HTTP timeout
+
+# ── Guardrails AI (Enhanced Taint Detection) ──
+guardrails_ai:
+  enabled: false                          # Enable Guardrails validators
+  pii_validator: true                     # DetectPII
+  secrets_validator: true                 # SecretsPresent
+  toxic_content: false                    # ToxicLanguage
+  on_fail: noop                           # noop | exception
+
+# ── MCP Server Registry ──
+registry:
+  enabled: true                           # Enable registry client
+  registry_url: https://registry.modelcontextprotocol.io
+  cache_ttl_seconds: 300                  # Cache TTL
+  timeout_seconds: 10.0                   # HTTP timeout
+
+# ── Snyk Agent Scan ──
+agent_scan:
+  enabled: true                           # Enable agent-scan bridge
+  binary_name: agent-scan                 # Binary name on PATH
+  timeout_seconds: 120                    # Scan timeout
+  auto_generate_policy: true              # Auto-generate policy rules
+```
+
+**Environment variable equivalents:**
+
+| YAML Key | Environment Variable |
+|----------|---------------------|
+| `langfuse.enabled` | `MCPKERNEL_LANGFUSE__ENABLED` |
+| `langfuse.public_key` | `MCPKERNEL_LANGFUSE__PUBLIC_KEY` |
+| `langfuse.secret_key` | `MCPKERNEL_LANGFUSE__SECRET_KEY` |
+| `guardrails_ai.enabled` | `MCPKERNEL_GUARDRAILS_AI__ENABLED` |
+| `registry.registry_url` | `MCPKERNEL_REGISTRY__REGISTRY_URL` |
+| `agent_scan.binary_name` | `MCPKERNEL_AGENT_SCAN__BINARY_NAME` |
 
 ---
 
