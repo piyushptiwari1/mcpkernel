@@ -76,7 +76,7 @@ class GuardrailsValidator:
             return
 
         try:
-            import guardrails as gd  # noqa: F401
+            import guardrails as gd  # type: ignore[import-not-found]  # noqa: F401
 
             self._available = True
             logger.info("guardrails-ai integration available")
@@ -151,7 +151,7 @@ class GuardrailsValidator:
         """Detect PII entities using Guardrails AI DetectPII validator."""
         detections: list[GuardrailsDetection] = []
         try:
-            from guardrails.hub import DetectPII
+            from guardrails.hub import DetectPII  # type: ignore[import-not-found]
 
             validator = DetectPII(
                 pii_entities=[
