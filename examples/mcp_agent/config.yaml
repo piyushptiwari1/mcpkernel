@@ -1,0 +1,45 @@
+# MCPKernel proxy config for mcp-agent integration example
+#
+# This config sets up MCPKernel as a transparent proxy that the mcp-agent
+# framework connects to instead of connecting directly to upstream servers.
+#
+# Start with:
+#   mcpkernel serve --config examples/mcp_agent/config.yaml
+
+proxy:
+  host: 127.0.0.1
+  port: 9090
+
+# Add your upstream MCP servers here.
+# MCPKernel will forward tool calls to these servers after running them
+# through the security pipeline.
+upstream:
+  - name: filesystem
+    url: http://localhost:3000/mcp
+    transport: streamable_http
+
+# Security policy
+policy:
+  default_action: allow
+  policy_paths:
+    - policies/owasp_asi_2026_strict.yaml
+
+# Taint tracking — detect PII and secrets flowing through tool calls
+taint:
+  mode: light
+
+# Deterministic Execution Envelopes — replayable, signed traces
+dee:
+  enabled: true
+  store_path: .mcpkernel/traces.db
+  sign_traces: false
+
+# Tamper-proof audit log
+audit:
+  enabled: true
+  log_path: .mcpkernel/audit.db
+
+# Observability
+observability:
+  metrics_enabled: true
+  log_level: INFO

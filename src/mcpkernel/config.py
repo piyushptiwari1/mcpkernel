@@ -43,6 +43,12 @@ class PruningStrategy(StrEnum):
     CONSERVATIVE = "conservative"
 
 
+class UpstreamTransport(StrEnum):
+    STREAMABLE_HTTP = "streamable_http"
+    SSE = "sse"
+    STDIO = "stdio"
+
+
 # ---------------------------------------------------------------------------
 # Sub-models
 # ---------------------------------------------------------------------------
@@ -157,6 +163,83 @@ class AuditConfig(BaseModel):
     export_format: str = "json"
 
 
+class AgentManifestConfig(BaseModel):
+    """Agent manifest (agent.yaml) settings."""
+
+    enabled: bool = False
+    manifest_path: Path | None = None
+
+
+class LangfuseConfig(BaseModel):
+    """Langfuse observability export settings."""
+
+    enabled: bool = False
+    public_key: str = ""
+    secret_key: str = ""
+    host: str = "https://cloud.langfuse.com"
+    project_name: str = "mcpkernel"
+    batch_size: int = Field(default=50, ge=1)
+    flush_interval_seconds: float = Field(default=5.0, gt=0)
+    max_retries: int = Field(default=3, ge=0)
+    timeout_seconds: float = Field(default=10.0, gt=0)
+
+    @field_validator("host", mode="before")
+    @classmethod
+    def _validate_host_scheme(cls, v: str) -> str:
+        if v and not v.startswith(("https://", "http://localhost", "http://127.0.0.1")):
+            import warnings
+
+            warnings.warn(
+                f"Langfuse host '{v}' uses non-HTTPS scheme. Use https:// in production.",
+                stacklevel=2,
+            )
+        return v
+
+
+class GuardrailsIntegrationConfig(BaseModel):
+    """Guardrails AI enhanced validation settings."""
+
+    enabled: bool = False
+    pii_validator: bool = True
+    toxic_content: bool = False
+    secrets_validator: bool = True
+    on_fail: str = "noop"
+
+
+class RegistryConfig(BaseModel):
+    """MCP Server Registry discovery settings."""
+
+    enabled: bool = True
+    registry_url: str = "https://registry.modelcontextprotocol.io"
+    cache_ttl_seconds: int = Field(default=300, ge=0)
+    timeout_seconds: float = Field(default=10.0, gt=0)
+
+
+class AgentScanConfig(BaseModel):
+    """Snyk Agent Scan integration settings."""
+
+    enabled: bool = True
+    binary_name: str = "agent-scan"
+    timeout_seconds: int = Field(default=120, ge=1)
+    auto_generate_policy: bool = True
+
+
+class UpstreamServerConfig(BaseModel):
+    """Configuration for a single upstream MCP server."""
+
+    name: str = Field(description="Human-readable name for this server")
+    url: str = Field(description="URL of the upstream MCP server (e.g. http://localhost:3000/mcp)")
+    transport: UpstreamTransport = UpstreamTransport.STREAMABLE_HTTP
+    command: str | None = Field(
+        default=None,
+        description="Command for stdio transport (e.g. 'npx @mcp/server-filesystem')",
+    )
+    args: list[str] = Field(default_factory=list, description="Args for stdio transport command")
+    env: dict[str, str] = Field(default_factory=dict, description="Environment variables for stdio command")
+    headers: dict[str, str] = Field(default_factory=dict, description="Extra HTTP headers for HTTP transports")
+    timeout_seconds: int = Field(default=30, ge=1, description="Timeout for upstream requests")
+
+
 # ---------------------------------------------------------------------------
 # Root settings
 # ---------------------------------------------------------------------------
@@ -189,6 +272,15 @@ class MCPKernelSettings(BaseSettings):
     policy: PolicyConfig = Field(default_factory=PolicyConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
     audit: AuditConfig = Field(default_factory=AuditConfig)
+    agent_manifest: AgentManifestConfig = Field(default_factory=AgentManifestConfig)
+    langfuse: LangfuseConfig = Field(default_factory=LangfuseConfig)
+    guardrails_ai: GuardrailsIntegrationConfig = Field(default_factory=GuardrailsIntegrationConfig)
+    registry: RegistryConfig = Field(default_factory=RegistryConfig)
+    agent_scan: AgentScanConfig = Field(default_factory=AgentScanConfig)
+    upstream: list[UpstreamServerConfig] = Field(
+        default_factory=list,
+        description="Upstream MCP servers to proxy to. If empty, MCPKernel runs in sandbox-only mode.",
+    )
 
     @field_validator("config_path", mode="before")
     @classmethod
@@ -225,6 +317,21 @@ def _load_yaml(path: Path) -> dict[str, Any]:
 def _deep_merge(settings: MCPKernelSettings, overrides: dict[str, Any]) -> None:
     """Apply *overrides* from YAML onto existing *settings* in-place."""
     for section_key, section_val in overrides.items():
+        if not hasattr(settings, section_key):
+            continue
+
+        # Handle top-level list fields (e.g., upstream: list[UpstreamServerConfig])
+        if isinstance(section_val, list):
+            field_info = settings.model_fields.get(section_key)
+            if field_info is not None and field_info.annotation is not None:
+                from pydantic import TypeAdapter
+
+                adapter = TypeAdapter(field_info.annotation)
+                setattr(settings, section_key, adapter.validate_python(section_val))
+            else:
+                setattr(settings, section_key, section_val)
+            continue
+
         if not isinstance(section_val, dict):
             continue
         current = getattr(settings, section_key, None)

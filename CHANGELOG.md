@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Third-party integrations package** (`src/mcpkernel/integrations/`)
+  - `langfuse.py`: Async audit/trace export to Langfuse with batched ingestion, exponential backoff retry on 429, periodic flush, and graceful shutdown
+  - `guardrails.py`: Enhanced PII/secret/toxicity validation via Guardrails AI hub validators (DetectPII, SecretsPresent, ToxicLanguage) with graceful fallback when not installed
+  - `registry.py`: MCP Server Registry client for searching, listing, validating upstream MCP servers with response caching
+  - `agent_scan.py`: Snyk agent-scan CLI bridge with JSON report parsing and automatic policy rule generation (critical/high → deny, medium → log)
+- **Integration configuration models** in `config.py`: `LangfuseConfig`, `GuardrailsIntegrationConfig`, `RegistryConfig`, `AgentScanConfig` — all wired into `MCPKernelSettings`
+- **4 new CLI commands**: `registry-search`, `registry-list`, `agent-scan`, `langfuse-export`
+- **Enhanced TaintHook**: Optional `guardrails_validator` parameter runs Guardrails AI validators alongside built-in regex patterns
+- **Enhanced ObservabilityHook**: Optional `langfuse_exporter` parameter auto-exports audit entries to Langfuse during proxy operation
+- **Upstream proxy module** (`proxy/upstream.py`): Native MCP protocol forwarding with reconnection, exponential backoff retry, resource/prompt forwarding
+- **Proxy server rewrite** (`proxy/server.py`): MCPLowLevelServer with StreamableHTTPSessionManager, REST endpoints, legacy JSON-RPC, native MCP protocol at `/mcp`
+- **mcp-agent example** (`examples/mcp_agent/`): Integration example with config.yaml for mcp-agent framework
+- **Simple MCP server example** (`examples/simple_mcp_server/`): FastMCP example server for testing
+- 61 new integration tests + upstream tests (524 total, all passing)
 - Agent manifest integration module (`src/mcpkernel/agent_manifest/`)
   - Renamed from gitagent to agent_manifest (inspired by open gitagent spec, MIT-licensed)
   - `loader.py`: Loads `agent.yaml`, SOUL.md, RULES.md, hooks.yaml, skills, sub-agents, a2a, vendor management
@@ -35,3 +49,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ebpf/probe.py`: Replaced deprecated `asyncio.get_event_loop()` with `asyncio.get_running_loop()`
 - CI now triggers on `development` branch in addition to `main`
 - Format violations in `agent_manifest/hooks.py` and `tests/test_agent_manifest.py`
+
+### Security
+- **SSRF prevention** in `agent_scan.py`: URL scheme validation rejects non-HTTP/HTTPS URLs before passing to subprocess
+- **Path traversal fix** in `registry.py`: Server name is URL-encoded via `urllib.parse.quote` before inclusion in API path
+- **Langfuse host validation** in `config.py`: Warns on non-HTTPS hosts (except localhost) to prevent credential leakage
+- **TOCTOU race fix**: Async Guardrails wrappers use `asyncio.to_thread` to avoid blocking the event loop and prevent time-of-check/time-of-use races

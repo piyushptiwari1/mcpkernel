@@ -29,9 +29,10 @@ class AuditEntry:
     outcome: str = ""
     details: dict[str, Any] = field(default_factory=dict)
     content_hash: str = ""
+    prev_hash: str = ""
 
     def compute_hash(self) -> str:
-        """Deterministic hash of this entry's contents."""
+        """Deterministic hash of this entry's contents (includes prev_hash for chaining)."""
         payload = json.dumps(
             {k: v for k, v in asdict(self).items() if k != "content_hash"},
             sort_keys=True,
@@ -51,6 +52,7 @@ class AuditLogger:
     def __init__(self, db_path: str = "mcpkernel_audit.db") -> None:
         self._db_path = db_path
         self._db: aiosqlite.Connection | None = None
+        self._last_hash: str = ""
 
     async def initialize(self) -> None:
         self._db = await aiosqlite.connect(self._db_path)
@@ -68,26 +70,37 @@ class AuditLogger:
                 action TEXT,
                 outcome TEXT,
                 details TEXT,
-                content_hash TEXT NOT NULL
+                content_hash TEXT NOT NULL,
+                prev_hash TEXT DEFAULT ''
             )
         """)
         await self._db.execute("CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp)")
         await self._db.execute("CREATE INDEX IF NOT EXISTS idx_audit_tool ON audit_log(tool_name)")
         await self._db.commit()
+
+        # Load last hash for chain continuity
+        cursor = await self._db.execute("SELECT content_hash FROM audit_log ORDER BY timestamp DESC LIMIT 1")
+        row = await cursor.fetchone()
+        self._last_hash = row[0] if row else ""
+
         logger.info("audit logger initialized", db=self._db_path)
 
     async def log(self, entry: AuditEntry) -> str:
-        """Append an audit entry. Returns the entry_id."""
+        """Append an audit entry with hash-chain linking. Returns the entry_id."""
         if not self._db:
             await self.initialize()
         assert self._db is not None
 
+        # Chain to previous entry
+        entry.prev_hash = self._last_hash
         entry.compute_hash()
+        self._last_hash = entry.content_hash
+
         await self._db.execute(
             """INSERT INTO audit_log
                (entry_id, timestamp, event_type, tool_name, agent_id,
-                request_id, trace_id, action, outcome, details, content_hash)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                request_id, trace_id, action, outcome, details, content_hash, prev_hash)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 entry.entry_id,
                 entry.timestamp,
@@ -100,6 +113,7 @@ class AuditLogger:
                 entry.outcome,
                 json.dumps(entry.details, default=str),
                 entry.content_hash,
+                entry.prev_hash,
             ),
         )
         await self._db.commit()
@@ -156,12 +170,13 @@ class AuditLogger:
                     outcome=row[8],
                     details=json.loads(row[9]) if row[9] else {},
                     content_hash=row[10],
+                    prev_hash=row[11] if len(row) > 11 else "",
                 )
             )
         return entries
 
     async def verify_integrity(self) -> dict[str, Any]:
-        """Verify all entries' hashes match their contents."""
+        """Verify all entries' hashes and hash-chain integrity."""
         if not self._db:
             await self.initialize()
         assert self._db is not None
@@ -170,10 +185,12 @@ class AuditLogger:
         row = await cursor.fetchone()
         total: int = row[0] if row else 0
 
-        cursor = await self._db.execute("SELECT * FROM audit_log")
+        cursor = await self._db.execute("SELECT * FROM audit_log ORDER BY timestamp ASC")
         rows = await cursor.fetchall()
 
         tampered = 0
+        chain_broken = 0
+        prev_hash = ""
         for row in rows:
             entry = AuditEntry(
                 entry_id=row[0],
@@ -186,15 +203,22 @@ class AuditLogger:
                 action=row[7],
                 outcome=row[8],
                 details=json.loads(row[9]) if row[9] else {},
+                prev_hash=row[11] if len(row) > 11 else "",
             )
             computed = entry.compute_hash()
             if computed != row[10]:
                 tampered += 1
+            # Verify chain linkage
+            stored_prev = row[11] if len(row) > 11 else ""
+            if stored_prev != prev_hash:
+                chain_broken += 1
+            prev_hash = row[10]
 
         return {
             "total_entries": total,
             "tampered_entries": tampered,
-            "integrity_valid": tampered == 0,
+            "chain_breaks": chain_broken,
+            "integrity_valid": tampered == 0 and chain_broken == 0,
         }
 
     async def close(self) -> None:

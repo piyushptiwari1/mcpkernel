@@ -103,4 +103,59 @@ gh repo edit piyushptiwari1/mcpkernel \
 | B-010 | Kubernetes operator for mcpkernel | Low | Enterprise deployment: CRD-based policy injection. |
 | B-011 | Paid dashboard (SaaS) | Low | Enterprise: centralized policy + audit + multi-tenant. |
 | B-012 | Public website + docs (mcpkernel.dev) | Medium | Landing page, docs, demo. |
+| B-013 | **Advanced community agent — multi-platform content** | High | See story below. |
+
+---
+
+## Story: B-013 — Advanced Community Agent (Multi-Platform Content)
+
+**As** a project maintainer,
+**I want** the contributor-booster agent to generate platform-specific content for LinkedIn, X/Twitter, and blog platforms,
+**So that** MCPKernel gets maximum visibility, reach, and community engagement across all channels.
+
+### Acceptance Criteria
+
+1. **LinkedIn posts** — Professional, long-form posts (1300 char max) targeting:
+   - Enterprise security engineers, CISOs, compliance officers
+   - AI/ML platform teams evaluating agent security
+   - Tone: authoritative, insight-driven, hashtags like `#AISecurity #OWASP #AgentSovereignty`
+   - Include a clear CTA (try it, star the repo, contribute)
+
+2. **X/Twitter threads** — Punchy, high-engagement threads (280 char/tweet, 5-8 tweets):
+   - Hook tweet with a bold claim or surprising stat
+   - Thread format: problem → solution → demo/proof → CTA
+   - Target: AI developers, security researchers, open-source community
+   - Use tags: `#MCP #AIAgents #OpenSource #GenAISecurity`
+
+3. **Blog posts** — Long-form technical articles for:
+   - **Dev.to / Hashnode** — developer tutorials ("How to secure your LangChain agent in 5 minutes")
+   - **Medium** — thought leadership ("Why every AI agent needs a security kernel")
+   - **Company/personal blog** — deep dives on architecture, benchmarks, compliance
+   - Each post should include: code snippets, architecture diagrams (Mermaid), and a call to contribute
+
+4. **Content calendar** — Agent should produce a 4-week rolling content plan:
+   | Week | LinkedIn | X/Twitter | Blog |
+   |------|----------|-----------|------|
+   | 1 | Launch announcement | Thread: "Your AI agent calls tools. Who's watching?" | Dev.to: "Secure your MCP agents in 5 min" |
+   | 2 | Use case: regulated industries | Thread: "FINRA compliance for AI agents" | Medium: "Why AI agents need a security kernel" |
+   | 3 | Contributor spotlight / welcome | Thread: "We just hit X stars — here's what's next" | Hashnode: "Building taint tracking for AI agents" |
+   | 4 | Comparison: MCPKernel vs alternatives | Thread: "Sandboxing AI tool calls: Docker vs WASM vs Firecracker" | Deep dive: "DEE — deterministic execution envelopes" |
+
+5. **Platform-specific formatting**:
+   - LinkedIn: paragraph breaks, bullet points, emojis sparingly, professional tone
+   - X/Twitter: numbered thread format (1/N), punchy language, memes/visuals welcome
+   - Blogs: H2/H3 headers, code blocks, TL;DR at top, "Getting Started" section at bottom
+
+6. **Collaboration hooks** — every post must include at least one of:
+   - Link to `good-first-issue` labels
+   - "Contributors welcome" callout
+   - "Star the repo" CTA
+   - Mention of the Apache 2.0 license
+
+### Technical Notes
+- Extend `contributor-booster` agent definition in `.github/agents/`
+- Agent should accept a `--platform` flag: `linkedin`, `twitter`, `blog-devto`, `blog-medium`, `blog-hashnode`
+- Agent should accept `--topic` to generate content around a specific feature or announcement
+- Output should be ready-to-post (no manual formatting needed)
+- Consider adding a `--schedule` mode that outputs the full 4-week content calendar
 

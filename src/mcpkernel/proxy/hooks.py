@@ -51,9 +51,18 @@ class TaintHook(PluginHook):
     PRIORITY = 900  # Runs after policy, before execution
     NAME = "taint"
 
-    def __init__(self, tracker: Any, *, detect_fn: Any = None) -> None:
+    def __init__(
+        self,
+        tracker: Any,
+        *,
+        detect_fn: Any = None,
+        propagator: Any = None,
+        guardrails_validator: Any = None,
+    ) -> None:
         self._tracker = tracker
         self._detect_fn = detect_fn
+        self._propagator = propagator
+        self._guardrails = guardrails_validator
 
     async def pre_execution(self, ctx: InterceptorContext) -> None:
         if self._detect_fn is None:
@@ -75,9 +84,45 @@ class TaintHook(PluginHook):
                 count=len(detections),
             )
 
+        # Enhanced detection via Guardrails AI (if available)
+        if self._guardrails is not None and self._guardrails.available:
+            try:
+                gr_detections = await self._guardrails.validate_dict(
+                    ctx.call.arguments,
+                    field_prefix=ctx.call.tool_name,
+                )
+                for gdet in gr_detections:
+                    ctx.taint_labels.add(gdet.label.value)
+                    self._tracker.mark(
+                        gdet.matched_text,
+                        gdet.label,
+                        source_id=ctx.call.correlation_id,
+                        metadata={
+                            "field": gdet.field_path,
+                            "tool": ctx.call.tool_name,
+                            "validator": gdet.validator_name,
+                        },
+                    )
+                if gr_detections:
+                    logger.info(
+                        "guardrails taint detected",
+                        tool=ctx.call.tool_name,
+                        labels=[d.label.value for d in gr_detections],
+                        count=len(gr_detections),
+                    )
+            except Exception:
+                logger.debug("guardrails validation failed (non-fatal)", exc_info=True)
+
     async def post_execution(self, ctx: InterceptorContext) -> None:
         if ctx.result is not None:
             ctx.extra["taint_summary"] = self._tracker.summary()
+            # Propagate taint through result content if propagator available
+            if self._propagator is not None and ctx.result.content:
+                self._propagator.propagate_through_call(
+                    ctx.call.tool_name,
+                    ctx.call.arguments,
+                    ctx.result.content,
+                )
 
 
 class AuditHook(PluginHook):
@@ -186,3 +231,62 @@ def _extract_host_port(value: str) -> tuple[str, int]:
     except Exception:  # noqa: S110
         pass
     return "", 0
+
+
+class ObservabilityHook(PluginHook):
+    """Log hook: increment Prometheus metrics counters for every tool call."""
+
+    PRIORITY = 50  # Runs after audit in log phase
+    NAME = "observability"
+
+    def __init__(self, metrics: Any, *, langfuse_exporter: Any = None) -> None:
+        self._metrics = metrics
+        self._langfuse = langfuse_exporter
+
+    async def pre_execution(self, ctx: InterceptorContext) -> None:
+        if self._metrics:
+            self._metrics.active_connections.inc()
+
+    async def post_execution(self, ctx: InterceptorContext) -> None:
+        if self._metrics:
+            self._metrics.active_connections.dec()
+            # Record policy decision
+            decision = ctx.extra.get("policy_decision")
+            if decision and hasattr(decision, "action"):
+                rule_id = decision.rule_id if hasattr(decision, "rule_id") else "default"
+                self._metrics.policy_decisions.labels(
+                    action=decision.action.value,
+                    rule_id=str(rule_id),
+                ).inc()
+
+            # Record taint detections
+            for label in ctx.taint_labels:
+                self._metrics.taint_detections.labels(label=label, pattern="auto").inc()
+
+    async def log(self, ctx: InterceptorContext) -> None:
+        if self._metrics:
+            self._metrics.audit_entries.labels(event_type="tool_call").inc()
+
+        # Export to Langfuse if configured
+        if self._langfuse is not None:
+            try:
+                from mcpkernel.audit.logger import AuditEntry
+
+                auth = ctx.extra.get("auth")
+                agent_id = auth.identity if auth else "unknown"
+                outcome = "blocked" if ctx.aborted else ("error" if ctx.result and ctx.result.is_error else "success")
+                entry = AuditEntry(
+                    event_type="tool_call",
+                    tool_name=ctx.call.tool_name,
+                    agent_id=agent_id,
+                    request_id=str(ctx.call.request_id),
+                    trace_id=ctx.result.trace_id or "" if ctx.result else "",
+                    action=ctx.policy_decision,
+                    outcome=outcome,
+                    details={
+                        "taint_labels": sorted(ctx.taint_labels),
+                    },
+                )
+                await self._langfuse.export_audit_entry(entry)
+            except Exception:
+                logger.debug("langfuse export failed (non-fatal)", exc_info=True)

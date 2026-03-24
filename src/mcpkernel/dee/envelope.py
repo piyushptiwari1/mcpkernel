@@ -87,6 +87,10 @@ async def wrap_execution(
         duration_seconds=duration,
         result=result,
         sigstore_bundle=bundle,
+        metadata={
+            "arguments": call.arguments,
+            "correlation_id": call.correlation_id,
+        },
     )
 
     logger.info(

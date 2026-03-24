@@ -207,22 +207,20 @@ def taint_settings(tmp_path: Path) -> MCPKernelSettings:
 
 
 class _IntegrationClient:
-    """Context manager that boots the full proxy with a mock sandbox backend."""
+    """Context manager that boots the full proxy with a mock upstream manager."""
 
     def __init__(self, settings: MCPKernelSettings) -> None:
         self._settings = settings
         self._mock_exec = AsyncMock(return_value=_ok_result())
         self._client: httpx.AsyncClient | None = None
-        self._patcher: Any = None
         self._lifespan_cm: Any = None
+        self._patcher: Any = None
 
     @property
     def mock_exec(self) -> AsyncMock:
         return self._mock_exec
 
     async def __aenter__(self) -> httpx.AsyncClient:
-        from unittest.mock import MagicMock
-
         from mcpkernel.proxy import server as srv
 
         # Reset module-level singletons so each test is isolated
@@ -230,22 +228,34 @@ class _IntegrationClient:
         srv._rate_limiter = None
         srv._auth_backend = None
         srv._settings = None
-        srv._execute_fn = None
-
-        # Build a mock sandbox backend that returns our controllable AsyncMock
-        mock_backend = MagicMock()
-        mock_backend.execute_code = self._mock_exec
-
-        self._patcher = patch("mcpkernel.sandbox.create_backend", return_value=mock_backend)
-        self._patcher.start()
+        srv._upstream_manager = None
+        srv._metrics = None
+        srv._mcp_server = None
 
         # Settings are already set as global config by the fixture.
-        # Pass None so create_proxy_app uses get_config() without re-serializing.
         app = srv.create_proxy_app(None)
 
-        # Manually run the lifespan to wire hooks, auth, rate limiter, sandbox
+        # Manually run the lifespan to wire hooks, auth, rate limiter, upstream
         self._lifespan_cm = app.router.lifespan_context(app)
         await self._lifespan_cm.__aenter__()
+
+        # Patch _forward_to_upstream at the module level so tools/call uses our mock
+        async def _mock_forward(call: Any) -> ExecutionResult:
+            if self._mock_exec.side_effect is not None:
+                if isinstance(self._mock_exec.side_effect, BaseException):
+                    # Mimic _forward_to_upstream's exception handling
+                    return ExecutionResult(
+                        content=[{"type": "text", "text": str(self._mock_exec.side_effect)}],
+                        is_error=True,
+                    )
+                return self._mock_exec.side_effect(call)
+            return self._mock_exec.return_value
+
+        self._patcher = patch(
+            "mcpkernel.proxy.server._forward_to_upstream",
+            side_effect=_mock_forward,
+        )
+        self._patcher.start()
 
         transport = httpx.ASGITransport(app=app)
         self._client = httpx.AsyncClient(transport=transport, base_url="http://testserver")
@@ -254,10 +264,10 @@ class _IntegrationClient:
     async def __aexit__(self, *exc: Any) -> None:
         if self._client:
             await self._client.aclose()
-        if self._lifespan_cm:
-            await self._lifespan_cm.__aexit__(None, None, None)
         if self._patcher:
             self._patcher.stop()
+        if self._lifespan_cm:
+            await self._lifespan_cm.__aexit__(None, None, None)
 
 
 # ---------------------------------------------------------------------------
@@ -279,7 +289,7 @@ class TestDevModeEndToEnd:
         ic = _IntegrationClient(dev_settings)
         ic.mock_exec.return_value = _ok_result(text="world")
         async with ic as client:
-            resp = await client.post("/mcp", json=_jsonrpc_tool_call())
+            resp = await client.post("/mcp/legacy", json=_jsonrpc_tool_call())
             assert resp.status_code == 200
             body = resp.json()
             assert body["jsonrpc"] == "2.0"
@@ -291,7 +301,7 @@ class TestDevModeEndToEnd:
         """Without auth, the identity should be 'anonymous'."""
         ic = _IntegrationClient(dev_settings)
         async with ic as client:
-            resp = await client.post("/mcp", json=_jsonrpc_tool_call())
+            resp = await client.post("/mcp/legacy", json=_jsonrpc_tool_call())
             assert resp.status_code == 200
 
     async def test_non_tool_call_passthrough(self, dev_settings: MCPKernelSettings) -> None:
@@ -299,7 +309,7 @@ class TestDevModeEndToEnd:
         ic = _IntegrationClient(dev_settings)
         async with ic as client:
             resp = await client.post(
-                "/mcp",
+                "/mcp/legacy",
                 json={
                     "jsonrpc": "2.0",
                     "id": 42,
@@ -317,7 +327,7 @@ class TestDevModeEndToEnd:
         ic.mock_exec.return_value = _ok_result(text="normalized ok")
         async with ic as client:
             resp = await client.post(
-                "/mcp",
+                "/mcp/legacy",
                 json={
                     "tool": "execute_code",
                     "arguments": {"code": "1+1"},
@@ -335,7 +345,7 @@ class TestDevModeEndToEnd:
             is_error=True,
         )
         async with ic as client:
-            resp = await client.post("/mcp", json=_jsonrpc_tool_call())
+            resp = await client.post("/mcp/legacy", json=_jsonrpc_tool_call())
             assert resp.status_code == 200
             body = resp.json()
             assert body["result"]["isError"] is True
@@ -346,7 +356,7 @@ class TestDevModeEndToEnd:
         ic = _IntegrationClient(dev_settings)
         ic.mock_exec.side_effect = RuntimeError("Docker daemon crashed")
         async with ic as client:
-            resp = await client.post("/mcp", json=_jsonrpc_tool_call())
+            resp = await client.post("/mcp/legacy", json=_jsonrpc_tool_call())
             assert resp.status_code == 200
             body = resp.json()
             assert body["result"]["isError"] is True
@@ -363,7 +373,7 @@ class TestDevModeErrors:
         ic = _IntegrationClient(dev_settings)
         async with ic as client:
             resp = await client.post(
-                "/mcp",
+                "/mcp/legacy",
                 content=b"this is not json",
                 headers={"content-type": "application/json"},
             )
@@ -378,7 +388,7 @@ class TestDevModeErrors:
         async with ic as client:
             big_payload = json.dumps({"data": "x" * 5000})
             resp = await client.post(
-                "/mcp",
+                "/mcp/legacy",
                 content=big_payload.encode(),
                 headers={"content-type": "application/json"},
             )
@@ -396,7 +406,7 @@ class TestProdModeAuth:
     async def test_missing_auth_rejected(self, prod_settings: MCPKernelSettings) -> None:
         ic = _IntegrationClient(prod_settings)
         async with ic as client:
-            resp = await client.post("/mcp", json=_jsonrpc_tool_call())
+            resp = await client.post("/mcp/legacy", json=_jsonrpc_tool_call())
             assert resp.status_code == 401
             body = resp.json()
             assert body["error"]["code"] == -32001
@@ -405,7 +415,7 @@ class TestProdModeAuth:
         ic = _IntegrationClient(prod_settings)
         async with ic as client:
             resp = await client.post(
-                "/mcp",
+                "/mcp/legacy",
                 json=_jsonrpc_tool_call(),
                 headers={"authorization": "Bearer wrong-key"},
             )
@@ -415,7 +425,7 @@ class TestProdModeAuth:
         ic = _IntegrationClient(prod_settings)
         async with ic as client:
             resp = await client.post(
-                "/mcp",
+                "/mcp/legacy",
                 json=_jsonrpc_tool_call(),
                 headers={"authorization": "Bearer test-secret-key-1234"},
             )
@@ -436,11 +446,11 @@ class TestProdModeRateLimit:
         async with ic as client:
             # Burst through allowed requests
             for i in range(3):
-                resp = await client.post("/mcp", json=_jsonrpc_tool_call(request_id=i), headers=auth)
+                resp = await client.post("/mcp/legacy", json=_jsonrpc_tool_call(request_id=i), headers=auth)
                 assert resp.status_code == 200, f"Request {i} should succeed"
 
             # 4th request should be rate-limited
-            resp = await client.post("/mcp", json=_jsonrpc_tool_call(request_id=99), headers=auth)
+            resp = await client.post("/mcp/legacy", json=_jsonrpc_tool_call(request_id=99), headers=auth)
             assert resp.status_code == 429
             body = resp.json()
             assert body["error"]["code"] == -32002
@@ -461,7 +471,7 @@ class TestProdModePolicy:
         ic = _IntegrationClient(prod_settings)
         async with ic as client:
             resp = await client.post(
-                "/mcp",
+                "/mcp/legacy",
                 json=_jsonrpc_tool_call(tool_name="execute_code"),
                 headers={"authorization": "Bearer test-secret-key-1234"},
             )
@@ -474,7 +484,7 @@ class TestProdModePolicy:
         ic = _IntegrationClient(prod_settings)
         async with ic as client:
             resp = await client.post(
-                "/mcp",
+                "/mcp/legacy",
                 json=_jsonrpc_tool_call(tool_name="shell_exec"),
                 headers={"authorization": "Bearer test-secret-key-1234"},
             )
@@ -490,7 +500,7 @@ class TestProdModePolicy:
         ic = _IntegrationClient(prod_settings)
         async with ic as client:
             resp = await client.post(
-                "/mcp",
+                "/mcp/legacy",
                 json=_jsonrpc_tool_call(tool_name="some_random_tool"),
                 headers={"authorization": "Bearer test-secret-key-1234"},
             )
@@ -509,7 +519,7 @@ class TestTaintIntegration:
         ic = _IntegrationClient(taint_settings)
         async with ic as client:
             resp = await client.post(
-                "/mcp",
+                "/mcp/legacy",
                 json=_jsonrpc_tool_call(
                     arguments={"code": "print('safe code')", "language": "python"},
                 ),
@@ -521,7 +531,7 @@ class TestTaintIntegration:
         ic = _IntegrationClient(taint_settings)
         async with ic as client:
             resp = await client.post(
-                "/mcp",
+                "/mcp/legacy",
                 json=_jsonrpc_tool_call(
                     arguments={"code": "import boto3; key='AKIA1234567890ABCDEF'"},
                 ),
@@ -535,7 +545,7 @@ class TestTaintIntegration:
         ic = _IntegrationClient(taint_settings)
         async with ic as client:
             resp = await client.post(
-                "/mcp",
+                "/mcp/legacy",
                 json=_jsonrpc_tool_call(
                     arguments={"code": "ssn = '123-45-6789'"},
                 ),
@@ -564,7 +574,7 @@ class TestFullPipeline:
         ic = _IntegrationClient(dev_settings)
         ic.mock_exec.return_value = _ok_result(text="traced result")
         async with ic as client:
-            resp = await client.post("/mcp", json=_jsonrpc_tool_call())
+            resp = await client.post("/mcp/legacy", json=_jsonrpc_tool_call())
             assert resp.status_code == 200
 
             # The DEE hook should have stored a trace
@@ -582,7 +592,7 @@ class TestFullPipeline:
         """Every tool call should produce an audit log entry."""
         ic = _IntegrationClient(dev_settings)
         async with ic as client:
-            await client.post("/mcp", json=_jsonrpc_tool_call(tool_name="test_tool"))
+            await client.post("/mcp/legacy", json=_jsonrpc_tool_call(tool_name="test_tool"))
 
             # Check audit DB
             logger = AuditLogger(db_path=str(tmp_path / "audit.db"))
@@ -602,7 +612,7 @@ class TestFullPipeline:
         ic = _IntegrationClient(prod_settings)
         async with ic as client:
             resp = await client.post(
-                "/mcp",
+                "/mcp/legacy",
                 json=_jsonrpc_tool_call(tool_name="shell_exec"),
                 headers={"authorization": "Bearer test-secret-key-1234"},
             )
@@ -625,7 +635,7 @@ class TestFullPipeline:
         ic = _IntegrationClient(dev_settings)
         async with ic as client:
             for i in range(5):
-                resp = await client.post("/mcp", json=_jsonrpc_tool_call(request_id=i))
+                resp = await client.post("/mcp/legacy", json=_jsonrpc_tool_call(request_id=i))
                 assert resp.status_code == 200
 
             # Verify integrity
@@ -647,7 +657,7 @@ class TestFullPipeline:
         ic = _IntegrationClient(dev_settings)
         async with ic as client:
             for i in range(3):
-                resp = await client.post("/mcp", json=_jsonrpc_tool_call(request_id=i + 1))
+                resp = await client.post("/mcp/legacy", json=_jsonrpc_tool_call(request_id=i + 1))
                 assert resp.status_code == 200
 
             store = TraceStore(db_path=str(tmp_path / "traces.db"))
