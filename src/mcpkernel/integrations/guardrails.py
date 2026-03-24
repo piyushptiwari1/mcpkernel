@@ -16,6 +16,7 @@ Usage::
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from typing import Any
 
@@ -166,7 +167,7 @@ class GuardrailsValidator:
                 ],
                 on_fail=self._config.on_fail,
             )
-            result = validator.validate(text, metadata={})
+            result = await asyncio.to_thread(validator.validate, text, {})
 
             if hasattr(result, "validation_passed") and not result.validation_passed:
                 for entity in getattr(result, "detected_entities", []):
@@ -199,7 +200,7 @@ class GuardrailsValidator:
             from guardrails.hub import SecretsPresent
 
             validator = SecretsPresent(on_fail=self._config.on_fail)
-            result = validator.validate(text, metadata={})
+            result = await asyncio.to_thread(validator.validate, text, {})
 
             if hasattr(result, "validation_passed") and not result.validation_passed:
                 detections.append(
@@ -233,7 +234,7 @@ class GuardrailsValidator:
             from guardrails.hub import ToxicLanguage
 
             validator = ToxicLanguage(on_fail=self._config.on_fail)
-            result = validator.validate(text, metadata={})
+            result = await asyncio.to_thread(validator.validate, text, {})
 
             if hasattr(result, "validation_passed") and not result.validation_passed:
                 detections.append(

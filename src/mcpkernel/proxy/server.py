@@ -394,6 +394,8 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         yield
 
     # Cleanup (runs after session manager shuts down)
+    if langfuse_exporter:
+        await langfuse_exporter.shutdown()
     await _upstream_manager.disconnect_all()
     await trace_store.close()
     await audit_logger.close()
@@ -740,6 +742,8 @@ async def start_stdio_server(settings: MCPKernelSettings | None = None) -> None:
         await _mcp_server.run(read_stream, write_stream, _mcp_server.create_initialization_options())
 
     # Cleanup
+    if langfuse_exporter_stdio:
+        await langfuse_exporter_stdio.shutdown()
     await _upstream_manager.disconnect_all()
     await trace_store.close()
     await audit_logger.close()

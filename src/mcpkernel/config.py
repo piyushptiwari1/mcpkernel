@@ -183,6 +183,18 @@ class LangfuseConfig(BaseModel):
     max_retries: int = Field(default=3, ge=0)
     timeout_seconds: float = Field(default=10.0, gt=0)
 
+    @field_validator("host", mode="before")
+    @classmethod
+    def _validate_host_scheme(cls, v: str) -> str:
+        if v and not v.startswith(("https://", "http://localhost", "http://127.0.0.1")):
+            import warnings
+
+            warnings.warn(
+                f"Langfuse host '{v}' uses non-HTTPS scheme. Use https:// in production.",
+                stacklevel=2,
+            )
+        return v
+
 
 class GuardrailsIntegrationConfig(BaseModel):
     """Guardrails AI enhanced validation settings."""

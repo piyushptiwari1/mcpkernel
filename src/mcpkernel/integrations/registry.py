@@ -162,7 +162,10 @@ class MCPRegistry:
         client = await self._ensure_client()
 
         try:
-            resp = await client.get(f"/api/v0/servers/{name}")
+            import urllib.parse
+
+            safe_name = urllib.parse.quote(name, safe="@")
+            resp = await client.get(f"/api/v0/servers/{safe_name}")
             if resp.status_code == 404:
                 return None
             if resp.status_code != 200:

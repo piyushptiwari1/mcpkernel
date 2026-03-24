@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+
+if TYPE_CHECKING:
+    from mcpkernel.proxy.interceptor import InterceptorContext
 
 
 # ====================================================================
@@ -638,3 +642,419 @@ class TestHookIntegration:
         mock_metrics = MagicMock()
         hook = ObservabilityHook(mock_metrics)
         assert hook._langfuse is None
+
+
+# ====================================================================
+# ObservabilityHook Langfuse Export Path Tests
+# ====================================================================
+class TestObservabilityHookLangfuse:
+    """Test ObservabilityHook.log() Langfuse export code path."""
+
+    def _make_ctx(
+        self,
+        *,
+        aborted: bool = False,
+        is_error: bool = False,
+        trace_id: str = "trace-001",
+    ) -> InterceptorContext:
+        from mcpkernel.proxy.interceptor import (
+            ExecutionResult,
+            InterceptorContext,
+            MCPToolCall,
+        )
+
+        call = MCPToolCall(
+            request_id=1,
+            tool_name="test_tool",
+            arguments={"key": "value"},
+            raw_jsonrpc={"jsonrpc": "2.0", "method": "tools/call", "id": 1},
+        )
+        result = ExecutionResult(
+            content=[{"type": "text", "text": "ok"}],
+            is_error=is_error,
+            trace_id=trace_id,
+        )
+        return InterceptorContext(
+            call=call,
+            result=result,
+            policy_decision="allow",
+            taint_labels={"pii"},
+            aborted=aborted,
+        )
+
+    @pytest.mark.asyncio
+    async def test_log_calls_langfuse_export(self) -> None:
+        """When langfuse_exporter is set, log() creates an AuditEntry and exports it."""
+        from mcpkernel.proxy.hooks import ObservabilityHook
+
+        mock_langfuse = AsyncMock()
+        mock_langfuse.export_audit_entry = AsyncMock()
+        mock_metrics = MagicMock()
+
+        hook = ObservabilityHook(mock_metrics, langfuse_exporter=mock_langfuse)
+        ctx = self._make_ctx()
+
+        await hook.log(ctx)
+
+        mock_langfuse.export_audit_entry.assert_awaited_once()
+        entry = mock_langfuse.export_audit_entry.call_args[0][0]
+        assert entry.event_type == "tool_call"
+        assert entry.tool_name == "test_tool"
+        assert entry.outcome == "success"
+        assert "pii" in entry.details["taint_labels"]
+
+    @pytest.mark.asyncio
+    async def test_log_langfuse_blocked_outcome(self) -> None:
+        """Aborted context yields outcome='blocked' in the exported entry."""
+        from mcpkernel.proxy.hooks import ObservabilityHook
+
+        mock_langfuse = AsyncMock()
+        mock_langfuse.export_audit_entry = AsyncMock()
+
+        hook = ObservabilityHook(MagicMock(), langfuse_exporter=mock_langfuse)
+        ctx = self._make_ctx(aborted=True)
+
+        await hook.log(ctx)
+
+        entry = mock_langfuse.export_audit_entry.call_args[0][0]
+        assert entry.outcome == "blocked"
+
+    @pytest.mark.asyncio
+    async def test_log_langfuse_error_outcome(self) -> None:
+        """Error result yields outcome='error' in the exported entry."""
+        from mcpkernel.proxy.hooks import ObservabilityHook
+
+        mock_langfuse = AsyncMock()
+        mock_langfuse.export_audit_entry = AsyncMock()
+
+        hook = ObservabilityHook(MagicMock(), langfuse_exporter=mock_langfuse)
+        ctx = self._make_ctx(is_error=True)
+
+        await hook.log(ctx)
+
+        entry = mock_langfuse.export_audit_entry.call_args[0][0]
+        assert entry.outcome == "error"
+
+    @pytest.mark.asyncio
+    async def test_log_langfuse_exception_is_nonfatal(self) -> None:
+        """If langfuse export raises, log() swallows the exception."""
+        from mcpkernel.proxy.hooks import ObservabilityHook
+
+        mock_langfuse = AsyncMock()
+        mock_langfuse.export_audit_entry = AsyncMock(side_effect=RuntimeError("connection lost"))
+
+        hook = ObservabilityHook(MagicMock(), langfuse_exporter=mock_langfuse)
+        ctx = self._make_ctx()
+
+        # Should not raise
+        await hook.log(ctx)
+
+    @pytest.mark.asyncio
+    async def test_log_without_langfuse_skips_export(self) -> None:
+        """When langfuse_exporter is None, no export is attempted."""
+        from mcpkernel.proxy.hooks import ObservabilityHook
+
+        hook = ObservabilityHook(MagicMock(), langfuse_exporter=None)
+        ctx = self._make_ctx()
+
+        # Should complete without error
+        await hook.log(ctx)
+
+    @pytest.mark.asyncio
+    async def test_log_langfuse_agent_id_from_auth(self) -> None:
+        """Agent ID is extracted from ctx.extra['auth'] when present."""
+        from mcpkernel.proxy.hooks import ObservabilityHook
+
+        mock_langfuse = AsyncMock()
+        mock_langfuse.export_audit_entry = AsyncMock()
+
+        hook = ObservabilityHook(MagicMock(), langfuse_exporter=mock_langfuse)
+        ctx = self._make_ctx()
+        ctx.extra["auth"] = MagicMock(identity="agent-42")
+
+        await hook.log(ctx)
+
+        entry = mock_langfuse.export_audit_entry.call_args[0][0]
+        assert entry.agent_id == "agent-42"
+
+
+# ====================================================================
+# TaintHook Guardrails Integration Path Tests
+# ====================================================================
+class TestTaintHookGuardrails:
+    """Test TaintHook.pre_execution() Guardrails integration code path."""
+
+    def _make_ctx(self) -> InterceptorContext:
+        from mcpkernel.proxy.interceptor import InterceptorContext, MCPToolCall
+
+        call = MCPToolCall(
+            request_id=2,
+            tool_name="read_file",
+            arguments={"path": "/etc/passwd", "email": "user@example.com"},
+            raw_jsonrpc={"jsonrpc": "2.0", "method": "tools/call", "id": 2},
+        )
+        return InterceptorContext(call=call)
+
+    @pytest.mark.asyncio
+    async def test_guardrails_detections_added_to_taint_labels(self) -> None:
+        """Detections from guardrails.validate_dict() are added to ctx.taint_labels."""
+        from mcpkernel.integrations.guardrails import GuardrailsDetection
+        from mcpkernel.proxy.hooks import TaintHook
+        from mcpkernel.taint.tracker import TaintLabel
+
+        detection = GuardrailsDetection(
+            validator_name="DetectPII",
+            label=TaintLabel.PII,
+            entity_type="EMAIL",
+            matched_text="user@example.com",
+            confidence=0.99,
+            field_path="email",
+        )
+
+        mock_guardrails = AsyncMock()
+        mock_guardrails.available = True
+        mock_guardrails.validate_dict = AsyncMock(return_value=[detection])
+
+        mock_tracker = MagicMock()
+        hook = TaintHook(
+            mock_tracker,
+            detect_fn=lambda args: [],
+            guardrails_validator=mock_guardrails,
+        )
+        ctx = self._make_ctx()
+
+        await hook.pre_execution(ctx)
+
+        assert "pii" in ctx.taint_labels
+        mock_guardrails.validate_dict.assert_awaited_once()
+        mock_tracker.mark.assert_called_once_with(
+            "user@example.com",
+            TaintLabel.PII,
+            source_id=ctx.call.correlation_id,
+            metadata={
+                "field": "email",
+                "tool": "read_file",
+                "validator": "DetectPII",
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_guardrails_multiple_detections(self) -> None:
+        """Multiple guardrails detections all get added to taint_labels."""
+        from mcpkernel.integrations.guardrails import GuardrailsDetection
+        from mcpkernel.proxy.hooks import TaintHook
+        from mcpkernel.taint.tracker import TaintLabel
+
+        detections = [
+            GuardrailsDetection(
+                validator_name="DetectPII",
+                label=TaintLabel.PII,
+                entity_type="EMAIL",
+                matched_text="user@example.com",
+                confidence=0.99,
+                field_path="email",
+            ),
+            GuardrailsDetection(
+                validator_name="DetectSecrets",
+                label=TaintLabel.SECRET,
+                entity_type="API_KEY",
+                matched_text="sk-...",
+                confidence=0.95,
+                field_path="token",
+            ),
+        ]
+
+        mock_guardrails = AsyncMock()
+        mock_guardrails.available = True
+        mock_guardrails.validate_dict = AsyncMock(return_value=detections)
+
+        mock_tracker = MagicMock()
+        hook = TaintHook(
+            mock_tracker,
+            detect_fn=lambda args: [],
+            guardrails_validator=mock_guardrails,
+        )
+        ctx = self._make_ctx()
+
+        await hook.pre_execution(ctx)
+
+        assert "pii" in ctx.taint_labels
+        assert "secret" in ctx.taint_labels
+        assert mock_tracker.mark.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_guardrails_exception_is_nonfatal(self) -> None:
+        """If guardrails.validate_dict() raises, it's swallowed (non-fatal)."""
+        from mcpkernel.proxy.hooks import TaintHook
+
+        mock_guardrails = AsyncMock()
+        mock_guardrails.available = True
+        mock_guardrails.validate_dict = AsyncMock(side_effect=RuntimeError("guard crash"))
+
+        mock_tracker = MagicMock()
+        hook = TaintHook(
+            mock_tracker,
+            detect_fn=lambda args: [],
+            guardrails_validator=mock_guardrails,
+        )
+        ctx = self._make_ctx()
+
+        # Should not raise
+        await hook.pre_execution(ctx)
+        assert len(ctx.taint_labels) == 0
+
+    @pytest.mark.asyncio
+    async def test_guardrails_skipped_when_not_available(self) -> None:
+        """When guardrails.available is False, validate_dict is not called."""
+        from mcpkernel.proxy.hooks import TaintHook
+
+        mock_guardrails = AsyncMock()
+        mock_guardrails.available = False
+        mock_guardrails.validate_dict = AsyncMock()
+
+        mock_tracker = MagicMock()
+        hook = TaintHook(
+            mock_tracker,
+            detect_fn=lambda args: [],
+            guardrails_validator=mock_guardrails,
+        )
+        ctx = self._make_ctx()
+
+        await hook.pre_execution(ctx)
+
+        mock_guardrails.validate_dict.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_guardrails_combined_with_detect_fn(self) -> None:
+        """Both detect_fn and guardrails detections contribute to taint_labels."""
+        from mcpkernel.integrations.guardrails import GuardrailsDetection
+        from mcpkernel.proxy.hooks import TaintHook
+        from mcpkernel.taint.tracker import TaintLabel
+
+        # detect_fn returns a detection
+        detect_result = MagicMock()
+        detect_result.label = TaintLabel.USER_INPUT
+        detect_result.matched_text = "/etc/passwd"
+        detect_result.field_path = "path"
+
+        def mock_detect_fn(args: dict) -> list:
+            return [detect_result]
+
+        # guardrails returns a detection
+        gr_detection = GuardrailsDetection(
+            validator_name="DetectPII",
+            label=TaintLabel.PII,
+            entity_type="EMAIL",
+            matched_text="user@example.com",
+            confidence=0.99,
+            field_path="email",
+        )
+        mock_guardrails = AsyncMock()
+        mock_guardrails.available = True
+        mock_guardrails.validate_dict = AsyncMock(return_value=[gr_detection])
+
+        mock_tracker = MagicMock()
+        hook = TaintHook(
+            mock_tracker,
+            detect_fn=mock_detect_fn,
+            guardrails_validator=mock_guardrails,
+        )
+        ctx = self._make_ctx()
+
+        await hook.pre_execution(ctx)
+
+        assert "user_input" in ctx.taint_labels
+        assert "pii" in ctx.taint_labels
+        # detect_fn mark + guardrails mark = 2 calls
+        assert mock_tracker.mark.call_count == 2
+
+
+# ====================================================================
+# Agent Scan URL Validation Tests
+# ====================================================================
+class TestAgentScanURLValidation:
+    """Test SSRF protection in scan_server_url()."""
+
+    @pytest.mark.asyncio
+    async def test_rejects_file_scheme(self) -> None:
+        """file:// URLs are rejected."""
+        from mcpkernel.integrations.agent_scan import AgentScanner
+
+        scanner = AgentScanner()
+        scanner._binary_path = "/usr/bin/true"  # pretend available
+        report = await scanner.scan_server_url("file:///etc/passwd")
+        assert "Invalid URL scheme" in report.raw_output
+
+    @pytest.mark.asyncio
+    async def test_rejects_ftp_scheme(self) -> None:
+        """ftp:// URLs are rejected."""
+        from mcpkernel.integrations.agent_scan import AgentScanner
+
+        scanner = AgentScanner()
+        scanner._binary_path = "/usr/bin/true"
+        report = await scanner.scan_server_url("ftp://evil.com/payload")
+        assert "Invalid URL scheme" in report.raw_output
+
+    @pytest.mark.asyncio
+    async def test_rejects_javascript_scheme(self) -> None:
+        """javascript: URLs are rejected."""
+        from mcpkernel.integrations.agent_scan import AgentScanner
+
+        scanner = AgentScanner()
+        scanner._binary_path = "/usr/bin/true"
+        report = await scanner.scan_server_url("javascript:alert(1)")
+        assert "Invalid URL scheme" in report.raw_output
+
+    @pytest.mark.asyncio
+    async def test_rejects_data_scheme(self) -> None:
+        """data: URLs are rejected."""
+        from mcpkernel.integrations.agent_scan import AgentScanner
+
+        scanner = AgentScanner()
+        scanner._binary_path = "/usr/bin/true"
+        report = await scanner.scan_server_url("data:text/html,<script>")
+        assert "Invalid URL scheme" in report.raw_output
+
+    @pytest.mark.asyncio
+    async def test_rejects_empty_scheme(self) -> None:
+        """URLs without a recognized scheme are rejected."""
+        from mcpkernel.integrations.agent_scan import AgentScanner
+
+        scanner = AgentScanner()
+        scanner._binary_path = "/usr/bin/true"
+        report = await scanner.scan_server_url("//evil.com/path")
+        assert "Invalid URL scheme" in report.raw_output
+
+    @pytest.mark.asyncio
+    async def test_accepts_http_scheme(self) -> None:
+        """http:// URLs pass validation (scan itself may fail, but URL check passes)."""
+        from unittest.mock import patch
+
+        from mcpkernel.integrations.agent_scan import AgentScanner
+
+        scanner = AgentScanner()
+        scanner._binary_path = "/usr/bin/true"
+
+        with patch.object(scanner, "_run_scan", new_callable=AsyncMock) as mock_run:
+            from mcpkernel.integrations.agent_scan import ScanReport
+
+            mock_run.return_value = ScanReport()
+            await scanner.scan_server_url("http://localhost:8080/mcp")
+            mock_run.assert_awaited_once_with(["--url", "http://localhost:8080/mcp"])
+
+    @pytest.mark.asyncio
+    async def test_accepts_https_scheme(self) -> None:
+        """https:// URLs pass validation."""
+        from unittest.mock import patch
+
+        from mcpkernel.integrations.agent_scan import AgentScanner
+
+        scanner = AgentScanner()
+        scanner._binary_path = "/usr/bin/true"
+
+        with patch.object(scanner, "_run_scan", new_callable=AsyncMock) as mock_run:
+            from mcpkernel.integrations.agent_scan import ScanReport
+
+            mock_run.return_value = ScanReport()
+            await scanner.scan_server_url("https://mcp.example.com/sse")
+            mock_run.assert_awaited_once_with(["--url", "https://mcp.example.com/sse"])
