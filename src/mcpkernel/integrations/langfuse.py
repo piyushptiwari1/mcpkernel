@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import datetime
 import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
@@ -138,8 +139,9 @@ class LangfuseExporter:
         event = _audit_entry_to_langfuse_event(entry, self._config.project_name)
         async with self._lock:
             self._batch.append(event)
+            should_flush = len(self._batch) >= self._config.batch_size
 
-        if len(self._batch) >= self._config.batch_size:
+        if should_flush:
             await self.flush()
 
     async def export_audit_entries(self, entries: list[AuditEntry]) -> None:
@@ -155,8 +157,9 @@ class LangfuseExporter:
         events = _dee_trace_to_langfuse_events(trace, self._config.project_name)
         async with self._lock:
             self._batch.extend(events)
+            should_flush = len(self._batch) >= self._config.batch_size
 
-        if len(self._batch) >= self._config.batch_size:
+        if should_flush:
             await self.flush()
 
     async def export_dee_traces(self, traces: list[dict[str, Any]]) -> None:
@@ -338,6 +341,4 @@ def _dee_trace_to_langfuse_events(
 
 def _epoch_to_iso(epoch: float) -> str:
     """Convert epoch seconds to ISO 8601 string for Langfuse API."""
-    import datetime
-
     return datetime.datetime.fromtimestamp(epoch, tz=datetime.UTC).isoformat()

@@ -123,6 +123,14 @@ class AgentScanner:
         if not self.available:
             return ScanReport(raw_output="agent-scan not available")
 
+        # Validate URL scheme to prevent SSRF via delegated subprocess
+        import urllib.parse
+
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            logger.warning("agent-scan rejected non-HTTP URL", url=url, scheme=parsed.scheme)
+            return ScanReport(raw_output=f"Invalid URL scheme: {parsed.scheme}. Only http/https allowed.")
+
         return await self._run_scan(["--url", url])
 
     def report_to_policy_rules(self, report: ScanReport) -> list[dict[str, Any]]:
@@ -160,7 +168,7 @@ class AgentScanner:
             }
 
             if finding.remediation:
-                rule["description"] += f" Remediation: {finding.remediation}"  # type: ignore[operator]  # type: ignore[operator]
+                rule["description"] += f" Remediation: {finding.remediation}"
 
             rules.append(rule)
 
