@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Any
 
 import typer
 
@@ -26,8 +26,8 @@ app = typer.Typer(
 # ── Proxy ──────────────────────────────────────────────────────────────
 @app.command()
 def serve(
-    host: Annotated[str, typer.Option(help="Bind address")] = "127.0.0.1",
-    port: Annotated[int, typer.Option(help="Bind port")] = 8000,
+    host: Annotated[str | None, typer.Option(help="Bind address")] = None,
+    port: Annotated[int | None, typer.Option(help="Bind port")] = None,
     config: Annotated[Path | None, typer.Option("--config", "-c", help="Config YAML path")] = None,
     log_level: Annotated[str, typer.Option(help="Log level")] = "info",
 ) -> None:
@@ -38,8 +38,10 @@ def serve(
 
     configure_logging(level=log_level)
     settings = load_config(config_path=config)
-    settings.proxy.host = host
-    settings.proxy.port = port
+    if host is not None:
+        settings.proxy.host = host
+    if port is not None:
+        settings.proxy.port = port
 
     start_proxy_server(settings)
 
@@ -227,6 +229,200 @@ def scan(
         raise typer.Exit(code=1)
 
 
+# ── Registry ───────────────────────────────────────────────────────────
+@app.command()
+def registry_search(
+    query: Annotated[str, typer.Argument(help="Search query (e.g. 'filesystem', 'git')")],
+    limit: Annotated[int, typer.Option(help="Max results")] = 20,
+    config: Annotated[Path | None, typer.Option("-c", "--config", help="Config YAML path")] = None,
+) -> None:
+    """Search the MCP Server Registry for servers."""
+    from mcpkernel.config import load_config
+    from mcpkernel.integrations.registry import MCPRegistry, RegistryConfig
+
+    settings = load_config(config_path=config)
+    reg_config = RegistryConfig(
+        registry_url=settings.registry.registry_url,
+        cache_ttl_seconds=settings.registry.cache_ttl_seconds,
+        timeout_seconds=settings.registry.timeout_seconds,
+    )
+
+    async def _run() -> None:
+        registry = MCPRegistry(config=reg_config)
+        try:
+            servers = await registry.search(query, limit=limit)
+            if not servers:
+                typer.echo(f"No servers found for '{query}'")
+                return
+            typer.echo(f"Found {len(servers)} server(s) matching '{query}':\n")
+            for s in servers:
+                typer.echo(f"  {s.display_name}")
+                if s.description:
+                    typer.echo(f"    {s.description[:80]}")
+                if s.transport:
+                    typer.echo(f"    Transports: {', '.join(s.transport)}")
+                if s.install_command:
+                    typer.echo(f"    Install: {s.install_command}")
+                typer.echo()
+        finally:
+            await registry.close()
+
+    asyncio.run(_run())
+
+
+@app.command()
+def registry_list(
+    limit: Annotated[int, typer.Option(help="Max results")] = 30,
+    config: Annotated[Path | None, typer.Option("-c", "--config", help="Config YAML path")] = None,
+) -> None:
+    """List available servers from the MCP Server Registry."""
+    from mcpkernel.config import load_config
+    from mcpkernel.integrations.registry import MCPRegistry, RegistryConfig
+
+    settings = load_config(config_path=config)
+    reg_config = RegistryConfig(
+        registry_url=settings.registry.registry_url,
+        cache_ttl_seconds=settings.registry.cache_ttl_seconds,
+        timeout_seconds=settings.registry.timeout_seconds,
+    )
+
+    async def _run() -> None:
+        registry = MCPRegistry(config=reg_config)
+        try:
+            servers = await registry.list_servers(limit=limit)
+            if not servers:
+                typer.echo("No servers found in registry.")
+                return
+            typer.echo(f"MCP Server Registry — {len(servers)} server(s):\n")
+            for s in servers:
+                cats = f" [{', '.join(s.categories)}]" if s.categories else ""
+                typer.echo(f"  {s.display_name}{cats}")
+        finally:
+            await registry.close()
+
+    asyncio.run(_run())
+
+
+# ── Agent Scan ─────────────────────────────────────────────────────────
+@app.command()
+def agent_scan(
+    target: Annotated[Path, typer.Argument(help="Directory or config file to scan")],
+    output: Annotated[Path | None, typer.Option("-o", "--output", help="Export generated policy rules")] = None,
+    config: Annotated[Path | None, typer.Option("-c", "--config", help="Config YAML path")] = None,
+) -> None:
+    """Run Snyk agent-scan on MCP configs and generate policy rules."""
+    from mcpkernel.config import load_config
+    from mcpkernel.integrations.agent_scan import AgentScanConfig as ASConfig
+    from mcpkernel.integrations.agent_scan import AgentScanner
+
+    settings = load_config(config_path=config)
+    as_config = ASConfig(
+        binary_name=settings.agent_scan.binary_name,
+        timeout_seconds=settings.agent_scan.timeout_seconds,
+        auto_generate_policy=settings.agent_scan.auto_generate_policy,
+    )
+
+    scanner = AgentScanner(config=as_config)
+    if not scanner.available:
+        typer.echo(
+            "✗ agent-scan not found on PATH.\n  Install: npm install -g @anthropic/agent-scan",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    async def _run() -> None:
+        if target.is_dir():
+            report = await scanner.scan_directory(target)
+        else:
+            report = await scanner.scan_config(target)
+
+        if not report.findings:
+            typer.echo("✓ No issues found.")
+            return
+
+        typer.echo(f"Found {len(report.findings)} issue(s):\n")
+        for f in report.findings:
+            icon = "🔴" if f.severity in ("critical", "high") else "🟡"
+            typer.echo(f"  {icon} [{f.severity.upper()}] {f.title}")
+            if f.server_name:
+                typer.echo(f"    Server: {f.server_name}")
+            if f.tool_name:
+                typer.echo(f"    Tool: {f.tool_name}")
+            if f.remediation:
+                typer.echo(f"    Fix: {f.remediation}")
+            typer.echo()
+
+        if settings.agent_scan.auto_generate_policy:
+            rules = scanner.report_to_policy_rules(report)
+            typer.echo(f"Generated {len(rules)} policy rule(s) from findings.")
+
+            if output:
+                _export_scan_rules_yaml(rules, output)
+                typer.echo(f"  Exported to {output}")
+
+        if report.has_blockers:
+            raise typer.Exit(code=1)
+
+    asyncio.run(_run())
+
+
+# ── Langfuse ───────────────────────────────────────────────────────────
+@app.command()
+def langfuse_export(
+    db: Annotated[str, typer.Option(help="Audit DB path")] = "mcpkernel_audit.db",
+    limit: Annotated[int, typer.Option(help="Max entries to export")] = 100,
+    config: Annotated[Path | None, typer.Option("-c", "--config", help="Config YAML path")] = None,
+) -> None:
+    """Export audit entries to Langfuse."""
+    from mcpkernel.audit.logger import AuditLogger
+    from mcpkernel.config import load_config
+    from mcpkernel.integrations.langfuse import LangfuseConfig as LFConfig
+    from mcpkernel.integrations.langfuse import LangfuseExporter
+
+    settings = load_config(config_path=config)
+    lf = settings.langfuse
+    if not lf.enabled or not lf.public_key or not lf.secret_key:
+        typer.echo(
+            "✗ Langfuse not configured. Set MCPKERNEL_LANGFUSE__ENABLED=true,\n"
+            "  MCPKERNEL_LANGFUSE__PUBLIC_KEY and MCPKERNEL_LANGFUSE__SECRET_KEY.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    lf_config = LFConfig(
+        enabled=True,
+        public_key=lf.public_key,
+        secret_key=lf.secret_key,
+        host=lf.host,
+        project_name=lf.project_name,
+        batch_size=lf.batch_size,
+        flush_interval_seconds=lf.flush_interval_seconds,
+        max_retries=lf.max_retries,
+        timeout_seconds=lf.timeout_seconds,
+    )
+
+    async def _run() -> None:
+        audit_logger = AuditLogger(db_path=db)
+        await audit_logger.initialize()
+        entries = await audit_logger.query(limit=limit)
+        if not entries:
+            typer.echo("No audit entries to export.")
+            return
+
+        exporter = LangfuseExporter(config=lf_config)
+        await exporter.start()
+        try:
+            await exporter.export_audit_entries(entries)
+            await exporter.flush()
+            typer.echo(f"✓ Exported {len(entries)} audit entries to Langfuse ({lf.host})")
+        finally:
+            await exporter.shutdown()
+
+        await audit_logger.close()
+
+    asyncio.run(_run())
+
+
 # ── Info / Config ──────────────────────────────────────────────────────
 @app.command()
 def version() -> None:
@@ -263,15 +459,28 @@ def init(
             "  host: 127.0.0.1\n"
             "  port: 8000\n"
             "\n"
-            "sandbox:\n"
-            "  backend: docker\n"
-            "  timeout_seconds: 30\n"
+            "# Upstream MCP servers to proxy to\n"
+            "# Add servers with: mcpkernel add-server <name> <url>\n"
+            "upstream: []\n"
             "\n"
             "policy:\n"
-            "  policy_dir: .mcpkernel/policies\n"
+            "  policy_paths:\n"
+            "    - .mcpkernel/policies/default.yaml\n"
+            "  default_action: deny\n"
+            "\n"
+            "taint:\n"
+            "  mode: light\n"
+            "\n"
+            "dee:\n"
+            "  enabled: true\n"
+            "  store_path: .mcpkernel/traces.db\n"
+            "\n"
+            "audit:\n"
+            "  enabled: true\n"
+            "  log_path: .mcpkernel/audit.db\n"
             "\n"
             "observability:\n"
-            "  log_level: info\n"
+            "  log_level: INFO\n"
             "  metrics_enabled: true\n"
         )
 
@@ -297,6 +506,85 @@ def init(
     typer.echo(f"✓ Initialized MCPKernel in {config_dir}")
     typer.echo(f"  Config: {config_file}")
     typer.echo(f"  Policies: {policies_dir}")
+    typer.echo("")
+    typer.echo("Next steps:")
+    typer.echo("  1. Add an upstream MCP server:")
+    typer.echo("     mcpkernel add-server myserver http://localhost:3000/mcp")
+    typer.echo("  2. Start the proxy:")
+    typer.echo("     mcpkernel serve -c .mcpkernel/config.yaml")
+
+
+@app.command()
+def add_server(
+    name: Annotated[str, typer.Argument(help="Server name (e.g. 'filesystem', 'github')")],
+    url: Annotated[str, typer.Argument(help="Server URL (e.g. 'http://localhost:3000/mcp')")],
+    transport: Annotated[str, typer.Option(help="Transport: streamable_http, sse, stdio")] = "streamable_http",
+    config: Annotated[Path, typer.Option("-c", "--config", help="Config YAML path")] = Path(".mcpkernel/config.yaml"),
+) -> None:
+    """Add an upstream MCP server to the configuration."""
+    import yaml
+
+    if not config.exists():
+        typer.echo(f"Config not found: {config}. Run 'mcpkernel init' first.", err=True)
+        raise typer.Exit(code=1)
+
+    with open(config) as f:
+        data = yaml.safe_load(f) or {}
+
+    if "upstream" not in data or not isinstance(data["upstream"], list):
+        data["upstream"] = []
+
+    # Check for duplicate names
+    for srv in data["upstream"]:
+        if srv.get("name") == name:
+            typer.echo(f"Server '{name}' already exists in config. Remove it first.", err=True)
+            raise typer.Exit(code=1)
+
+    server_entry: dict[str, Any] = {
+        "name": name,
+        "url": url,
+        "transport": transport,
+    }
+    data["upstream"].append(server_entry)
+
+    with open(config, "w") as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
+    typer.echo(f"✓ Added server '{name}' ({transport}) → {url}")
+    typer.echo(f"  Config: {config}")
+
+
+@app.command()
+def test_connection(
+    config: Annotated[Path | None, typer.Option("-c", "--config", help="Config YAML path")] = None,
+) -> None:
+    """Test connectivity to all configured upstream MCP servers."""
+    from mcpkernel.config import load_config
+    from mcpkernel.proxy.upstream import UpstreamConnection
+
+    settings = load_config(config_path=config)
+
+    if not settings.upstream:
+        typer.echo("No upstream servers configured. Use 'mcpkernel add-server' first.")
+        raise typer.Exit(code=1)
+
+    async def _run() -> None:
+        all_ok = True
+        for srv_config in settings.upstream:
+            conn = UpstreamConnection(srv_config)
+            try:
+                await conn.connect()
+                tools = conn.tool_names
+                typer.echo(f"  ✓ {srv_config.name} — {len(tools)} tools: {', '.join(sorted(tools))}")
+                await conn.disconnect()
+            except Exception as exc:
+                typer.echo(f"  ✗ {srv_config.name} — {exc}", err=True)
+                all_ok = False
+
+        if not all_ok:
+            raise typer.Exit(code=1)
+
+    asyncio.run(_run())
 
 
 # ── Agent Manifest Integration ────────────────────────────────────────
@@ -371,6 +659,16 @@ def manifest_validate(
         typer.echo(f"  Compliance: risk_tier={definition.compliance.risk_tier}")
     else:
         typer.echo("  Compliance: not configured")
+
+
+def _export_scan_rules_yaml(rules: list[dict[str, Any]], output_path: Path) -> None:
+    """Export agent-scan generated rules as a YAML policy file."""
+    import yaml
+
+    data = {"rules": rules}
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w") as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 
 
 def _export_rules_yaml(rules: Sequence[PolicyRule], output_path: Path) -> None:
