@@ -553,7 +553,7 @@ git clone https://github.com/piyushptiwari1/mcpkernel.git
 cd mcpkernel
 pip install -e ".[dev]"
 
-# Run tests (506 tests, ~89% coverage)
+# Run tests (524 tests, ~89% coverage)
 pytest tests/ -v --cov=mcpkernel
 
 # Lint
@@ -651,7 +651,7 @@ git clone https://github.com/piyushptiwari1/mcpkernel.git
 cd mcpkernel
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev,all]"
-pytest  # 443 tests, all should pass
+pytest  # 524 tests, all should pass
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow, commit conventions, and PR process.

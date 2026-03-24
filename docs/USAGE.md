@@ -174,6 +174,12 @@ All configuration can be overridden with environment variables:
 | `MCPKERNEL_OBSERVABILITY__LOG_LEVEL` | Log level | `info` |
 | `MCPKERNEL_OBSERVABILITY__METRICS_ENABLED` | Enable Prometheus metrics | `true` |
 | `MCPKERNEL_OBSERVABILITY__OTLP_ENDPOINT` | OpenTelemetry endpoint | `` |
+| `MCPKERNEL_LANGFUSE__ENABLED` | Enable Langfuse export | `false` |
+| `MCPKERNEL_LANGFUSE__PUBLIC_KEY` | Langfuse public API key | `` |
+| `MCPKERNEL_LANGFUSE__SECRET_KEY` | Langfuse secret API key | `` |
+| `MCPKERNEL_GUARDRAILS_AI__ENABLED` | Enable Guardrails AI validators | `false` |
+| `MCPKERNEL_REGISTRY__REGISTRY_URL` | MCP Registry URL | `https://registry.modelcontextprotocol.io` |
+| `MCPKERNEL_AGENT_SCAN__BINARY_NAME` | Snyk agent-scan binary name | `agent-scan` |
 
 ---
 
