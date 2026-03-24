@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-03-25
+
+### Fixed
+- **17 mypy type errors** resolved across 5 files:
+  - `agent_scan.py`: Explicit `str()` cast for dict value concatenation
+  - `guardrails.py`: `type: ignore[import-not-found]` for optional `guardrails` imports
+  - `registry.py`: Added `list[RegistryServer]` type annotation on cached value
+  - `tracing.py`: `type: ignore[import-not-found]` for optional OTLP exporter import
+  - `server.py`: `type: ignore[no-untyped-call, untyped-decorator]` for MCP SDK decorators; `type: ignore[arg-type]` for Starlette mount
+
+### Added
+- **64 new tests** in `tests/test_coverage_boost.py` covering:
+  - DEE drift detection (all drift categories: NONE, ENVIRONMENT_CHANGE, RANDOM_SEED, CLOCK_DEPENDENCY, NETWORK_CALL, FILESYSTEM_CHANGE, UNKNOWN)
+  - DEE envelope wrap_execution with/without Sigstore signing
+  - Docker, Firecracker, WASM, and Microsandbox sandbox backend execution paths
+  - eBPF probe lifecycle (start/stop/event registration)
+  - Guardrails AI validators (PII, secrets, toxic content) with mock validators
+  - Langfuse exporter lifecycle, flush, rate-limit retry, error handling
+  - Agent scan report-to-policy-rules conversion
+- Test coverage raised from **77.36% → 82.39%** (588 tests, all passing)
+
 ### Added
 - **Third-party integrations package** (`src/mcpkernel/integrations/`)
   - `langfuse.py`: Async audit/trace export to Langfuse with batched ingestion, exponential backoff retry on 429, periodic flush, and graceful shutdown
