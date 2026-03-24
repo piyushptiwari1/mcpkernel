@@ -160,7 +160,7 @@ class AgentScanner:
             }
 
             if finding.remediation:
-                rule["description"] += f" Remediation: {finding.remediation}"
+                rule["description"] += f" Remediation: {finding.remediation}"  # type: ignore[operator]  # type: ignore[operator]
 
             rules.append(rule)
 

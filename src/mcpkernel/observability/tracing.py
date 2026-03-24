@@ -47,7 +47,7 @@ def setup_tracing(config: TracingSetup) -> Any | None:
 
                 exporter = GrpcExporter(endpoint=config.otlp_endpoint)
             else:
-                from opentelemetry.exporter.otlp.proto.http.trace_exporter import (  # type: ignore[import-not-found]
+                from opentelemetry.exporter.otlp.proto.http.trace_exporter import (  
                     OTLPSpanExporter as HttpExporter,
                 )
 

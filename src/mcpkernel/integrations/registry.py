@@ -129,7 +129,7 @@ class MCPRegistry:
 
         now = time.time()
         if self._cache.get("list") and (now - self._cache_ts) < self._config.cache_ttl_seconds:
-            cached = self._cache["list"]
+            cached: list[RegistryServer] = self._cache["list"]
             return cached[:limit]
 
         client = await self._ensure_client()

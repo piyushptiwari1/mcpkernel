@@ -166,13 +166,13 @@ def _create_mcp_server() -> MCPLowLevelServer:
     """
     server = MCPLowLevelServer("mcpkernel")
 
-    @server.list_tools()
+    @server.list_tools()  # type: ignore[misc]
     async def _list_tools() -> list[Any]:
         if _upstream_manager is None:
             return []
         return await _upstream_manager.list_all_tools()
 
-    @server.call_tool()
+    @server.call_tool()  # type: ignore[misc]
     async def _call_tool(name: str, arguments: dict[str, Any] | None = None) -> list[TextContent]:
         args = arguments or {}
         exec_result, ctx = await _run_security_pipeline(name, args)
@@ -186,31 +186,31 @@ def _create_mcp_server() -> MCPLowLevelServer:
                 contents.append(TextContent(type="text", text=str(c)))
         return contents
 
-    @server.list_resources()
+    @server.list_resources()  # type: ignore[misc]
     async def _list_resources() -> list[Any]:
         if _upstream_manager is None:
             return []
         return await _upstream_manager.list_all_resources()
 
-    @server.read_resource()
+    @server.read_resource()  # type: ignore[misc]
     async def _read_resource(uri: Any) -> str:
         if _upstream_manager is None:
             return ""
         result = await _upstream_manager.read_resource(str(uri))
         for content in result.contents:
             if hasattr(content, "text"):
-                return content.text
+                return str(content.text)
             if hasattr(content, "blob"):
-                return content.blob
+                return str(content.blob)
         return ""
 
-    @server.list_prompts()
+    @server.list_prompts()  # type: ignore[misc]
     async def _list_prompts() -> list[Any]:
         if _upstream_manager is None:
             return []
         return await _upstream_manager.list_all_prompts()
 
-    @server.get_prompt()
+    @server.get_prompt()  # type: ignore[misc]
     async def _get_prompt(name: str, arguments: dict[str, str] | None = None) -> Any:
         if _upstream_manager is None:
             from mcp.types import GetPromptResult, PromptMessage
@@ -625,7 +625,7 @@ def create_proxy_app(settings: MCPKernelSettings | None = None) -> FastAPI:
                     resp = StarletteJSON({"error": "MCP server not initialized"}, status_code=503)
                     await resp(scope, receive, send)
 
-    app.mount("/mcp", _LazyMCPMount())
+    app.mount("/mcp", _LazyMCPMount())  # type: ignore[arg-type]  # type: ignore[arg-type]
 
     return app
 
