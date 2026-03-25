@@ -19,6 +19,7 @@ REST Endpoints:
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import json
 from contextlib import asynccontextmanager
@@ -274,10 +275,12 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     from mcpkernel.policy import PolicyAction, PolicyEngine, load_policy_file
     from mcpkernel.proxy.hooks import (
         AuditHook,
+        ContextHook,
         DEEHook,
         EBPFHook,
         ObservabilityHook,
         PolicyHook,
+        SandboxHook,
         TaintHook,
     )
 
@@ -289,6 +292,15 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             rules = load_policy_file(policy_path)
             policy_engine.add_rules(rules)
     _pipeline.register(PolicyHook(policy_engine))
+
+    # Context minimization hook
+    if _settings.context.enabled:
+        _pipeline.register(
+            ContextHook(
+                strategy=_settings.context.strategy.value,
+                max_context_tokens=_settings.context.max_context_tokens,
+            )
+        )
 
     # eBPF / network egress enforcement
     if _settings.ebpf.enabled:
@@ -368,8 +380,32 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         langfuse_exporter = LangfuseExporter(config=lf_config)
         await langfuse_exporter.start()
 
+    # Sandbox hook — execute in sandbox when policy decision is "sandbox"
+    from mcpkernel.sandbox import create_backend
+
+    sandbox_backend = create_backend(_settings.sandbox)
+    _pipeline.register(SandboxHook(sandbox_backend, timeout=_settings.sandbox.default_timeout_seconds))
+
     # Observability hook (metrics)
     _pipeline.register(ObservabilityHook(_metrics, langfuse_exporter=langfuse_exporter))
+
+    # Agent manifest hook (validates tool calls against agent.yaml)
+    if _settings.agent_manifest.enabled and _settings.agent_manifest.manifest_path:
+        manifest_path = _settings.agent_manifest.manifest_path
+        if manifest_path.exists():
+            from mcpkernel.agent_manifest import load_agent_manifest, manifest_to_policy_rules
+            from mcpkernel.agent_manifest.hooks import AgentManifestHook
+
+            definition = load_agent_manifest(manifest_path)
+            _pipeline.register(AgentManifestHook(definition))
+            bridge_rules = manifest_to_policy_rules(definition)
+            policy_engine.add_rules(bridge_rules)
+            logger.info(
+                "agent manifest hook wired",
+                agent=definition.name,
+                manifest=str(manifest_path),
+                bridge_rules=len(bridge_rules),
+            )
 
     # --- Build native MCP server ---
     _mcp_server = _create_mcp_server()
@@ -381,6 +417,13 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 
     _session_manager = StreamableHTTPSessionManager(app=_mcp_server)
+
+    # Policy hot-reload watcher
+    _policy_watcher_task = None
+    if _settings.policy.hot_reload:
+        from mcpkernel.policy.watcher import watch_policy_files
+
+        _policy_watcher_task = asyncio.create_task(watch_policy_files(policy_engine, _settings.policy.policy_paths))
 
     async with _session_manager.run():
         logger.info(
@@ -394,6 +437,8 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
         yield
 
     # Cleanup (runs after session manager shuts down)
+    if _policy_watcher_task is not None:
+        _policy_watcher_task.cancel()
     if langfuse_exporter:
         await langfuse_exporter.shutdown()
     await _upstream_manager.disconnect_all()
@@ -664,7 +709,15 @@ async def start_stdio_server(settings: MCPKernelSettings | None = None) -> None:
 
     # Wire pipeline
     from mcpkernel.policy import PolicyAction, PolicyEngine, load_policy_file
-    from mcpkernel.proxy.hooks import AuditHook, DEEHook, ObservabilityHook, PolicyHook, TaintHook
+    from mcpkernel.proxy.hooks import (
+        AuditHook,
+        ContextHook,
+        DEEHook,
+        ObservabilityHook,
+        PolicyHook,
+        SandboxHook,
+        TaintHook,
+    )
 
     policy_engine = PolicyEngine(default_action=PolicyAction(_settings.policy.default_action))
     for policy_path in _settings.policy.policy_paths:
@@ -672,6 +725,15 @@ async def start_stdio_server(settings: MCPKernelSettings | None = None) -> None:
             rules = load_policy_file(policy_path)
             policy_engine.add_rules(rules)
     _pipeline.register(PolicyHook(policy_engine))
+
+    # Context minimization hook
+    if _settings.context.enabled:
+        _pipeline.register(
+            ContextHook(
+                strategy=_settings.context.strategy.value,
+                max_context_tokens=_settings.context.max_context_tokens,
+            )
+        )
 
     from mcpkernel.taint import TaintPropagator, TaintTracker, detect_tainted_sources
 
@@ -713,6 +775,12 @@ async def start_stdio_server(settings: MCPKernelSettings | None = None) -> None:
     await audit_logger.initialize()
     _pipeline.register(AuditHook(audit_logger))
 
+    # Sandbox hook
+    from mcpkernel.sandbox import create_backend
+
+    sandbox_backend_stdio = create_backend(_settings.sandbox)
+    _pipeline.register(SandboxHook(sandbox_backend_stdio, timeout=_settings.sandbox.default_timeout_seconds))
+
     # Optional Langfuse exporter
     langfuse_exporter_stdio = None
     if _settings.langfuse.enabled and _settings.langfuse.public_key and _settings.langfuse.secret_key:
@@ -730,6 +798,24 @@ async def start_stdio_server(settings: MCPKernelSettings | None = None) -> None:
         await langfuse_exporter_stdio.start()
 
     _pipeline.register(ObservabilityHook(_metrics, langfuse_exporter=langfuse_exporter_stdio))
+
+    # Agent manifest hook (validates tool calls against agent.yaml)
+    if _settings.agent_manifest.enabled and _settings.agent_manifest.manifest_path:
+        manifest_path = _settings.agent_manifest.manifest_path
+        if manifest_path.exists():
+            from mcpkernel.agent_manifest import load_agent_manifest, manifest_to_policy_rules
+            from mcpkernel.agent_manifest.hooks import AgentManifestHook
+
+            definition = load_agent_manifest(manifest_path)
+            _pipeline.register(AgentManifestHook(definition))
+            bridge_rules = manifest_to_policy_rules(definition)
+            policy_engine.add_rules(bridge_rules)
+            logger.info(
+                "agent manifest hook wired (stdio)",
+                agent=definition.name,
+                manifest=str(manifest_path),
+                bridge_rules=len(bridge_rules),
+            )
 
     # Build MCP server
     _mcp_server = _create_mcp_server()

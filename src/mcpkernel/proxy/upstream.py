@@ -22,7 +22,7 @@ if TYPE_CHECKING:
         GetPromptResult,
         ListToolsResult,
         Prompt,
-        ReadResourceResult,
+        ReadResourceContentsResponse,
         Resource,
         ResourceTemplate,
         Tool,
@@ -169,7 +169,7 @@ class UpstreamConnection:
             logger.debug("upstream does not support resources", name=self._config.name)
             return []
 
-    async def read_resource(self, uri: str) -> ReadResourceResult:
+    async def read_resource(self, uri: str) -> ReadResourceContentsResponse:
         """Read a resource by URI from the upstream server."""
         if self._session is None:
             msg = f"Not connected to upstream server '{self._config.name}'"
@@ -206,6 +206,20 @@ class UpstreamConnection:
             msg = f"Not connected to upstream server '{self._config.name}'"
             raise RuntimeError(msg)
         return await self._session.get_prompt(name, arguments=arguments)
+
+    async def ping(self) -> bool:
+        """Ping the upstream server to check connectivity.
+
+        Returns True if the server responded, False on error.
+        """
+        if self._session is None:
+            return False
+        try:
+            await self._session.send_ping()
+            return True
+        except Exception:
+            logger.debug("upstream ping failed", name=self._config.name, exc_info=True)
+            return False
 
     async def reconnect(self) -> None:
         """Disconnect and reconnect to the upstream server."""
@@ -367,7 +381,7 @@ class UpstreamManager:
             all_templates.extend(templates)
         return all_templates
 
-    async def read_resource(self, uri: str) -> ReadResourceResult:
+    async def read_resource(self, uri: str) -> ReadResourceContentsResponse:
         """Route a resource read to the correct upstream server."""
         conn = self.get_server_for_resource(uri)
         if conn is None:
