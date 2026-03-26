@@ -30,10 +30,10 @@ def serve(
     port: Annotated[int | None, typer.Option(help="Bind port")] = None,
     config: Annotated[Path | None, typer.Option("--config", "-c", help="Config YAML path")] = None,
     log_level: Annotated[str, typer.Option(help="Log level")] = "info",
+    transport: Annotated[str, typer.Option(help="Transport: http or stdio")] = "http",
 ) -> None:
     """Start the MCPKernel proxy gateway."""
     from mcpkernel.config import load_config
-    from mcpkernel.proxy.server import start_proxy_server
     from mcpkernel.utils import configure_logging
 
     configure_logging(level=log_level)
@@ -43,7 +43,14 @@ def serve(
     if port is not None:
         settings.proxy.port = port
 
-    start_proxy_server(settings)
+    if transport == "stdio":
+        from mcpkernel.proxy.server import start_stdio_server
+
+        asyncio.run(start_stdio_server(settings))
+    else:
+        from mcpkernel.proxy.server import start_proxy_server
+
+        start_proxy_server(settings)
 
 
 # ── Policy ─────────────────────────────────────────────────────────────
@@ -431,6 +438,118 @@ def version() -> None:
 
 
 @app.command()
+def quickstart(
+    preset: Annotated[str, typer.Option("--preset", "-p", help="Policy preset")] = "standard",
+) -> None:
+    """One-command demo — init, show config, and verify the pipeline works."""
+    from mcpkernel.presets import get_preset_rules, list_presets
+
+    available = list_presets()
+    if preset not in available:
+        typer.echo(f"✗ Unknown preset '{preset}'. Available: {', '.join(available)}", err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(f"🚀 MCPKernel Quickstart (preset: {preset})")
+    typer.echo("=" * 50)
+
+    # Show what the preset does
+    typer.echo(f"\n📋 Policy: {available[preset]}")
+    rules = get_preset_rules(preset)
+    for r in rules:
+        typer.echo(f"   [{r.action.value:>7s}] {r.name}")
+
+    # Verify pipeline wiring
+    typer.echo("\n🔧 Verifying pipeline...")
+
+    async def _verify() -> None:
+        from mcpkernel.api import MCPKernelProxy
+
+        proxy = MCPKernelProxy(policy=preset, taint=True, audit=True)
+        await proxy.start()
+        typer.echo(f"   ✓ {len(proxy.hooks)} hooks loaded: {', '.join(proxy.hooks)}")
+        await proxy.stop()
+        typer.echo("   ✓ Pipeline start/stop OK")
+
+    asyncio.run(_verify())
+
+    # Show Python usage
+    typer.echo("\n📦 Python usage:")
+    typer.echo("   from mcpkernel import MCPKernelProxy")
+    typer.echo("")
+    typer.echo('   async with MCPKernelProxy(upstream=["http://localhost:3000/mcp"]) as proxy:')
+    typer.echo('       result = await proxy.call_tool("my_tool", {"arg": "value"})')
+    typer.echo("")
+    typer.echo("✓ Ready! Run 'mcpkernel init' to set up a project, or use the Python API directly.")
+
+
+@app.command()
+def status(
+    config: Annotated[Path | None, typer.Option("--config", "-c", help="Config YAML path")] = None,
+) -> None:
+    """Show current MCPKernel status — config, hooks, policy, and upstream servers."""
+    from mcpkernel.config import load_config
+
+    try:
+        settings = load_config(config_path=config)
+    except Exception:
+        typer.echo("⚠ No config found. Run 'mcpkernel init' first or provide --config.")
+        raise typer.Exit(code=1)  # noqa: B904
+
+    typer.echo(f"MCPKernel v{__version__} — Status")
+    typer.echo("=" * 45)
+
+    # Proxy
+    typer.echo(f"  Proxy:   {settings.proxy.host}:{settings.proxy.port}")
+
+    # Policy
+    typer.echo(f"  Policy:  default_action={settings.policy.default_action}")
+    for p in settings.policy.policy_paths:
+        exists = "✓" if Path(p).exists() else "✗ MISSING"
+        typer.echo(f"           {p} [{exists}]")
+
+    # Features
+    taint_mode = getattr(settings.taint, "mode", "off")
+    typer.echo(f"  Taint:   {taint_mode}")
+    typer.echo(f"  Audit:   {'enabled' if settings.audit.enabled else 'disabled'}")
+    typer.echo(f"  DEE:     {'enabled' if settings.dee.enabled else 'disabled'}")
+    typer.echo(f"  Context: {'enabled' if settings.context.enabled else 'disabled'}")
+
+    # Upstream
+    if settings.upstream:
+        typer.echo(f"  Upstream ({len(settings.upstream)}):")
+        for srv in settings.upstream:
+            typer.echo(f"    • {srv.name}: {srv.url} [{srv.transport}]")
+    else:
+        typer.echo("  Upstream: none configured")
+
+    # Auth
+    auth_type = "api_key" if settings.auth.api_keys else "none"
+    typer.echo(f"  Auth:    {auth_type}")
+
+    typer.echo("")
+    typer.echo("Run 'mcpkernel serve' to start the proxy.")
+
+
+@app.command()
+def presets() -> None:
+    """List available policy presets and their rules."""
+    from mcpkernel.presets import get_preset_rules, list_presets
+
+    available_presets = list_presets()
+    typer.echo("Available policy presets:")
+    typer.echo("=" * 50)
+    for name, desc in available_presets.items():
+        typer.echo(f"\n  {name}")
+        typer.echo(f"  {desc}")
+        try:
+            rules = get_preset_rules(name)
+            for r in rules:
+                typer.echo(f"    [{r.action.value:>7s}] {r.name}")
+        except ValueError:
+            typer.echo("    (uses external YAML policy files)")
+
+
+@app.command()
 def config_show(
     config: Annotated[Path | None, typer.Option("--config", "-c", help="Config YAML path")] = None,
 ) -> None:
@@ -444,16 +563,30 @@ def config_show(
 @app.command()
 def init(
     directory: Annotated[Path, typer.Argument(help="Project directory")] = Path("."),
+    preset: Annotated[
+        str, typer.Option("--preset", "-p", help="Policy preset: permissive, standard, strict")
+    ] = "standard",
 ) -> None:
     """Initialize MCPKernel in a project directory."""
+    from mcpkernel.presets import get_preset_rules, list_presets
+
+    available = list_presets()
+    if preset not in available:
+        typer.echo(f"✗ Unknown preset '{preset}'. Available: {', '.join(available)}", err=True)
+        raise typer.Exit(code=1)
+
     config_dir = directory / ".mcpkernel"
     config_dir.mkdir(parents=True, exist_ok=True)
+
+    preset_info = available[preset]
+    default_action = "deny" if preset == "strict" else ("allow" if preset == "permissive" else "audit")
 
     # Create default config
     config_file = config_dir / "config.yaml"
     if not config_file.exists():
         config_file.write_text(
-            "# MCPKernel configuration\n"
+            f"# MCPKernel configuration (preset: {preset})\n"
+            f"# {preset_info}\n"
             "# See https://github.com/piyushptiwari1/mcpkernel for docs\n\n"
             "proxy:\n"
             "  host: 127.0.0.1\n"
@@ -466,7 +599,7 @@ def init(
             "policy:\n"
             "  policy_paths:\n"
             "    - .mcpkernel/policies/default.yaml\n"
-            "  default_action: deny\n"
+            f"  default_action: {default_action}\n"
             "\n"
             "taint:\n"
             "  mode: light\n"
@@ -484,28 +617,19 @@ def init(
             "  metrics_enabled: true\n"
         )
 
-    # Create policies dir with default policy
+    # Create policies dir with preset rules
     policies_dir = config_dir / "policies"
     policies_dir.mkdir(exist_ok=True)
 
     default_policy = policies_dir / "default.yaml"
     if not default_policy.exists():
-        default_policy.write_text(
-            "# Default MCPKernel policy\n"
-            "rules:\n"
-            "  - id: DEFAULT-001\n"
-            "    name: Block eval/exec\n"
-            "    description: Block dynamic code execution\n"
-            "    action: deny\n"
-            "    tool_patterns:\n"
-            "      - '.*'\n"
-            "    taint_labels:\n"
-            "      - untrusted_external\n"
-        )
+        rules = get_preset_rules(preset)
+        _export_preset_rules_yaml(rules, default_policy)
 
-    typer.echo(f"✓ Initialized MCPKernel in {config_dir}")
+    typer.echo(f"✓ Initialized MCPKernel in {config_dir} (preset: {preset})")
     typer.echo(f"  Config: {config_file}")
     typer.echo(f"  Policies: {policies_dir}")
+    typer.echo(f"  Preset: {preset} — {preset_info}")
     typer.echo("")
     typer.echo("Next steps:")
     typer.echo("  1. Add an upstream MCP server:")
@@ -684,6 +808,7 @@ def _export_rules_yaml(rules: Sequence[PolicyRule], output_path: Path) -> None:
                 "action": r.action.value,
                 "priority": r.priority,
                 "tool_patterns": r.tool_patterns,
+                "argument_patterns": r.argument_patterns,
                 "taint_labels": r.taint_labels,
                 "owasp_asi_id": r.owasp_asi_id,
                 "conditions": r.conditions,
@@ -695,6 +820,10 @@ def _export_rules_yaml(rules: Sequence[PolicyRule], output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
         yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
+
+# Reuse the same format for preset rules export
+_export_preset_rules_yaml = _export_rules_yaml
 
 
 if __name__ == "__main__":

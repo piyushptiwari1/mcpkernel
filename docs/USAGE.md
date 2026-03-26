@@ -141,6 +141,145 @@ mcpkernel scan path/to/file.py
 
 ---
 
+## Python API
+
+MCPKernel provides a programmatic Python API alongside the CLI and proxy gateway. This lets you embed the security pipeline directly into your application code.
+
+### MCPKernelProxy
+
+The primary entry point for programmatic use. It creates a full security pipeline (policy, taint, DEE, audit) and routes tool calls through it.
+
+```python
+from mcpkernel import MCPKernelProxy
+
+async with MCPKernelProxy(
+    upstream=["http://localhost:3000/mcp"],
+    policy="strict",
+    taint=True,
+) as proxy:
+    result = await proxy.call_tool("read_file", {"path": "data.csv"})
+```
+
+**Constructor parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `upstream` | `list[str]` | `[]` | Upstream MCP server URLs |
+| `policy` | `str \| Path` | `"standard"` | Preset name (`permissive`, `standard`, `strict`, `owasp-asi-2026`) or path to YAML policy file |
+| `taint` | `bool` | `True` | Enable taint detection (secrets, PII) |
+| `audit` | `bool` | `True` | Enable audit logging |
+| `sandbox` | `bool` | `False` | Enable sandbox execution |
+| `context_pruning` | `bool` | `False` | Enable context minimization |
+| `config_path` | `Path` | `None` | YAML config file (overrides all other kwargs) |
+| `host` | `str` | `"127.0.0.1"` | HTTP bind address (for `serve()`) |
+| `port` | `int` | `8080` | HTTP bind port (for `serve()`) |
+
+**Key methods:**
+
+- `await proxy.start()` — Initialize pipeline and connect to upstreams
+- `await proxy.stop()` — Shut down pipeline and disconnect
+- `await proxy.call_tool(name, args)` — Route a tool call through the security pipeline
+- `await proxy.list_tools()` — List tools available from upstream servers
+- `proxy.hooks` — Names of registered pipeline hooks
+- `proxy.tool_names` — Tool names from upstream servers
+
+The proxy supports `async with` for automatic lifecycle management.
+
+### protect() Decorator
+
+One-line decorator that wraps any function with MCPKernel security checks. Supports both sync and async functions.
+
+```python
+from mcpkernel import protect
+
+@protect(policy="strict", taint=True)
+async def read_data(path: str) -> str:
+    return Path(path).read_text()
+
+# Sync functions also work
+@protect(policy="standard")
+def get_config(key: str) -> str:
+    return config[key]
+```
+
+The decorator lazily initializes a `MCPKernelProxy` on first call. Function arguments are routed through the policy engine and taint scanner before the function executes. An `atexit` handler ensures cleanup.
+
+**Decorator parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `policy` | `str \| Path` | `"standard"` | Policy preset or YAML path |
+| `taint` | `bool` | `True` | Enable taint detection |
+| `audit` | `bool` | `True` | Enable audit logging |
+| `sandbox` | `bool` | `False` | Enable sandbox execution |
+
+### POLICY_PRESETS
+
+Built-in policy presets available via `from mcpkernel import POLICY_PRESETS`:
+
+| Preset | Default Action | Description |
+|--------|---------------|-------------|
+| `permissive` | `allow` | Audit everything, block nothing. Good for development. |
+| `standard` | `audit` | Block known-dangerous patterns, audit the rest. |
+| `strict` | `deny` | Deny-by-default. Only explicitly allowed tools pass. |
+| `owasp-asi-2026` | `deny` | Full OWASP ASI 2026 compliance (file-based rule set). |
+
+Get the rules for a preset programmatically:
+
+```python
+from mcpkernel.presets import get_preset_rules, list_presets
+
+# List all presets with descriptions
+for name, desc in list_presets().items():
+    print(f"{name}: {desc}")
+
+# Get rules for a specific preset
+rules = get_preset_rules("strict")
+for rule in rules:
+    print(f"  [{rule.action.value}] {rule.name}")
+```
+
+---
+
+## New CLI Commands
+
+### quickstart
+
+One-command demo that shows the preset rules, verifies the pipeline, and prints usage instructions.
+
+```bash
+mcpkernel quickstart              # Test with standard preset
+mcpkernel quickstart --preset strict
+```
+
+### presets
+
+List all available policy presets and the rules they include.
+
+```bash
+mcpkernel presets
+```
+
+### status
+
+Show current MCPKernel status — config, hooks, policy, and upstream servers.
+
+```bash
+mcpkernel status --config .mcpkernel/config.yaml
+```
+
+### init --preset
+
+Initialize a project with a named policy preset. The preset determines the default action and which rules are generated.
+
+```bash
+mcpkernel init /path/to/project --preset standard
+mcpkernel init --preset strict
+mcpkernel init --preset permissive
+```
+
+---
+
 ## Using with Docker
 
 ```bash

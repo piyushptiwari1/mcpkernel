@@ -155,3 +155,20 @@ class TraceStore:
         if record is None:
             raise KeyError(f"Trace not found: {trace_id}")
         return json.dumps(record, indent=2, default=str)
+
+    async def cleanup_old_traces(self, max_age_days: int = 90) -> int:
+        """Delete traces older than *max_age_days*.
+
+        Returns the number of deleted rows.
+        """
+        if self._db is None:
+            await self.open()
+        assert self._db is not None
+
+        cutoff = time.time() - (max_age_days * 86400)
+        cursor = await self._db.execute("DELETE FROM traces WHERE timestamp < ?", (cutoff,))
+        await self._db.commit()
+        deleted = cursor.rowcount
+        if deleted:
+            logger.info("old traces cleaned up", deleted=deleted, max_age_days=max_age_days)
+        return deleted

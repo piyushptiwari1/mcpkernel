@@ -17,6 +17,29 @@ mcpkernel serve --host 127.0.0.1 --port 8000
 
 Point your MCP client to `http://localhost:8000/mcp` instead of targeting tool servers directly. Every tool call is now policy-checked, taint-scanned, sandboxed, and audit-logged.
 
+### Python API
+
+```python
+from mcpkernel import MCPKernelProxy
+
+async with MCPKernelProxy(
+    upstream=["http://localhost:3000/mcp"],
+    policy="strict",
+    taint=True,
+) as proxy:
+    result = await proxy.call_tool("read_file", {"path": "data.csv"})
+```
+
+Or secure any function with one decorator:
+
+```python
+from mcpkernel import protect
+
+@protect(policy="strict", taint=True)
+async def read_data(path: str) -> str:
+    return Path(path).read_text()
+```
+
 ---
 
 ## Why MCPKernel?
@@ -48,6 +71,8 @@ AI agents (LangChain, CrewAI, AutoGen, Copilot) call tools autonomously — read
 
 ## Features
 
+- **Python API** — `MCPKernelProxy` class and `@protect` decorator for programmatic security pipeline access
+- **Policy Presets** — built-in `permissive`, `standard`, and `strict` presets — zero-config security
 - **YAML Policy Engine** — define allow/deny/audit/sandbox rules per tool, argument pattern, or taint label
 - **Taint Tracking** — automatic detection of secrets, PII, API keys, JWTs in tool call arguments
 - **4 Sandbox Backends** — Docker, Firecracker microVMs, WASM, Microsandbox
@@ -416,6 +441,8 @@ src/mcpkernel/
 │   ├── guardrails.py   # Guardrails AI PII/secret/toxicity validators
 │   ├── registry.py     # MCP Server Registry client
 │   └── agent_scan.py   # Snyk agent-scan bridge + policy rule generation
+├── api.py          # Programmatic Python API — MCPKernelProxy, protect() decorator
+├── presets.py      # Built-in policy presets (permissive, standard, strict)
 ├── config.py       # Pydantic v2 hierarchical config (YAML → env → CLI)
 ├── cli.py          # Typer CLI — serve, scan, replay, audit, registry, agent-scan
 └── utils.py        # Hashing, exceptions, structured logging
@@ -470,6 +497,10 @@ rules:
 | `mcpkernel registry-search <query>` | Search the MCP Server Registry for servers |
 | `mcpkernel registry-list` | List available servers from the MCP Registry |
 | `mcpkernel agent-scan <path>` | Run Snyk agent-scan, generate policy rules from findings |
+| `mcpkernel quickstart` | One-command demo — init, show config, verify pipeline |
+| `mcpkernel presets` | List available policy presets and their rules |
+| `mcpkernel status` | Show current config, hooks, policy, and upstream servers |
+| `mcpkernel init --preset <name>` | Initialize project with a named policy preset |
 | `mcpkernel langfuse-export` | Export audit entries to Langfuse for visualization |
 
 ---
@@ -553,7 +584,7 @@ git clone https://github.com/piyushptiwari1/mcpkernel.git
 cd mcpkernel
 pip install -e ".[dev]"
 
-# Run tests (524 tests, ~89% coverage)
+# Run tests (666 tests, ~81% coverage)
 pytest tests/ -v --cov=mcpkernel
 
 # Lint
@@ -651,7 +682,7 @@ git clone https://github.com/piyushptiwari1/mcpkernel.git
 cd mcpkernel
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev,all]"
-pytest  # 524 tests, all should pass
+pytest  # 666 tests, all should pass
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow, commit conventions, and PR process.

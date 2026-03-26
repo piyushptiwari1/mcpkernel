@@ -1,7 +1,8 @@
-"""Built-in plugin hooks — wire Policy, Taint, Audit, and DEE into the proxy pipeline."""
+"""Built-in plugin hooks — wire Policy, Taint, Audit, DEE, Context, and Sandbox into the proxy pipeline."""
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from mcpkernel.proxy.interceptor import InterceptorContext, PluginHook
@@ -290,3 +291,105 @@ class ObservabilityHook(PluginHook):
                 await self._langfuse.export_audit_entry(entry)
             except Exception:
                 logger.debug("langfuse export failed (non-fatal)", exc_info=True)
+
+
+class ContextHook(PluginHook):
+    """Pre-execution hook: prune large arguments via context minimization."""
+
+    PRIORITY = 850  # After taint (900), before DEE (800)
+    NAME = "context"
+
+    def __init__(
+        self,
+        *,
+        strategy: str = "moderate",
+        max_context_tokens: int = 4096,
+    ) -> None:
+        from mcpkernel.context.pruning import PruningStrategy
+
+        self._strategy = PruningStrategy(strategy)
+        self._max_tokens = max_context_tokens
+
+    async def pre_execution(self, ctx: InterceptorContext) -> None:
+        args_size = len(json.dumps(ctx.call.arguments, default=str))
+        # Rough estimate: 1 token ≈ 4 chars
+        estimated_tokens = args_size // 4
+
+        if estimated_tokens <= self._max_tokens:
+            return
+
+        from mcpkernel.context.pruning import prune_context
+
+        result = prune_context(
+            ctx.call.arguments,
+            strategy=self._strategy,
+            query_terms=[ctx.call.tool_name],
+            max_tokens=self._max_tokens,
+        )
+        ctx.extra["context_pruned"] = True
+        ctx.extra["context_reduction_ratio"] = result.reduction_ratio
+        ctx.extra["context_pruned_fields"] = result.pruned_fields
+
+        # Replace arguments with reduced content
+        from mcpkernel.proxy.interceptor import MCPToolCall
+
+        ctx.call = MCPToolCall(
+            request_id=ctx.call.request_id,
+            tool_name=ctx.call.tool_name,
+            arguments=result.reduced_content,
+            raw_jsonrpc=ctx.call.raw_jsonrpc,
+            correlation_id=ctx.call.correlation_id,
+            timestamp=ctx.call.timestamp,
+        )
+        logger.info(
+            "context pruned",
+            tool=ctx.call.tool_name,
+            reduction=f"{result.reduction_ratio:.1%}",
+            pruned_fields=result.pruned_fields,
+        )
+
+
+class SandboxHook(PluginHook):
+    """Pre-execution hook: execute tool call in sandbox when policy decision is 'sandbox'."""
+
+    PRIORITY = 750  # After context (850), before DEE (800)
+    NAME = "sandbox"
+
+    def __init__(self, backend: Any, *, timeout: int = 30) -> None:
+        self._backend = backend
+        self._timeout = timeout
+
+    async def pre_execution(self, ctx: InterceptorContext) -> None:
+        if ctx.policy_decision != "sandbox":
+            return
+
+        from mcpkernel.proxy.interceptor import ExecutionResult
+
+        try:
+            sandbox_result = await self._backend.execute_code(
+                json.dumps(ctx.call.arguments, default=str),
+                timeout=self._timeout,
+            )
+            ctx.result = ExecutionResult(
+                content=[{"type": "text", "text": str(sandbox_result)}],
+                is_error=False,
+                metadata={"sandboxed": True},
+            )
+            ctx.extra["sandboxed"] = True
+            logger.info(
+                "tool call executed in sandbox",
+                tool=ctx.call.tool_name,
+                timeout=self._timeout,
+            )
+        except Exception as exc:
+            ctx.result = ExecutionResult(
+                content=[{"type": "text", "text": f"Sandbox execution failed: {exc}"}],
+                is_error=True,
+                metadata={"sandboxed": True, "error": str(exc)},
+            )
+            ctx.extra["sandboxed"] = True
+            logger.warning(
+                "sandbox execution failed",
+                tool=ctx.call.tool_name,
+                error=str(exc),
+            )

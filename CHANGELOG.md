@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.2] — 2026-03-25
 
+### Added
+- **`MCPKernelProxy` class** (`src/mcpkernel/api.py`): Programmatic Python API for the security pipeline — supports `async with`, `call_tool()`, `list_tools()`, and all pipeline hooks (policy, taint, DEE, audit, sandbox, observability)
+- **`protect()` decorator** (`src/mcpkernel/api.py`): One-line decorator to wrap sync/async tool functions with MCPKernel security (policy check, taint scan, audit logging). Lazy-initializes on first call with `atexit` cleanup.
+- **`presets.py`** (`src/mcpkernel/presets.py`): Built-in policy presets (`permissive`, `standard`, `strict`) returning ready-to-use `PolicyRule` lists — no YAML files needed
+- **New exports** from `mcpkernel`: `MCPKernelProxy`, `protect`, `POLICY_PRESETS`
+- **New CLI commands**: `quickstart` (one-command pipeline demo), `status` (show config/hooks/upstream), `presets` (list available presets), enhanced `init --preset <name>`
+- 16 new tests for API, presets, and CLI commands (666 total, all passing)
+
+### Fixed
+- **(CRITICAL)** All preset `tool_patterns` fixed from glob syntax to regex syntax — patterns now match correctly in the policy engine
+- **(CRITICAL)** `PolicyViolation` constructor fixed to accept 2 required arguments (`code`, `message`)
+- **(CRITICAL)** Preset rules now actually loaded into `PolicyEngine` during `MCPKernelProxy.start()`
+- Default `policy_paths` properly cleared for non-file-based presets to avoid `FileNotFoundError`
+- `owasp-asi-2026` preset raises informative `ValueError` when used with `get_preset_rules()` (it's file-based)
+- `protect()` decorator now supports both sync and async functions via `inspect.iscoroutinefunction()` check
+- Added `atexit` cleanup handler in `protect()` to avoid resource leaks
+- Removed unsafe `exec()` call from docstring example
+- `argument_patterns` included in CLI preset rule YAML export
+- Auth context (`ctx.extra["auth"]`) added in `protect()` decorator for proper audit identity
+
 ### Fixed
 - **17 mypy type errors** resolved across 5 files:
   - `agent_scan.py`: Explicit `str()` cast for dict value concatenation
