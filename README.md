@@ -3,8 +3,12 @@
 > **Open-source MCP/A2A security gateway — policy enforcement, taint tracking, sandboxed execution, deterministic envelopes, and Sigstore audit for every AI agent tool call. OWASP ASI 2026 compliant.**
 
 [![CI](https://github.com/piyushptiwari1/mcpkernel/actions/workflows/ci.yml/badge.svg)](https://github.com/piyushptiwari1/mcpkernel/actions/workflows/ci.yml)
+[![PyPI version](https://img.shields.io/pypi/v/mcpkernel.svg)](https://pypi.org/project/mcpkernel/)
+[![Tests](https://img.shields.io/badge/tests-666%20passed-brightgreen.svg)](https://github.com/piyushptiwari1/mcpkernel)
+[![Coverage](https://img.shields.io/badge/coverage-81%25-yellowgreen.svg)](https://github.com/piyushptiwari1/mcpkernel)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://python.org)
+[![Downloads](https://img.shields.io/pypi/dm/mcpkernel.svg)](https://pypi.org/project/mcpkernel/)
 
 ---
 

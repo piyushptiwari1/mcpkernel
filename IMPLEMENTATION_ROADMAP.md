@@ -22,7 +22,7 @@ Everything is configurable: users enable only the features they need.
 | MCP Protocol | 3/3 ✅ | — |
 | Pipeline Hooks | 8/8 ✅ | — |
 | Production Hardening | 4/6 | OAuth2, Redis rate-limiter |
-| User Experience | 2/7 | Python API, quickstart, status, presets, decorator |
+| User Experience | 7/7 ✅ | — |
 | Infrastructure | 1/5 | A2A, dashboard, multi-tenant, load balancing |
 
 ---
@@ -52,12 +52,12 @@ Everything is configurable: users enable only the features they need.
 
 ---
 
-## Phase 3: User Experience & Production Readiness (CURRENT PRIORITY)
+## Phase 3: User Experience & Production Readiness ✅ COMPLETE
 
 **Goal**: Users `pip install mcpkernel` and get a production-ready security layer with zero git cloning, intuitive configuration, and a clean Python API.
 
 ### 3.1 Python API — `MCPKernelProxy` class
-**Status**: ❌ Not done → implementing now
+**Status**: ✅ Done (v0.1.2)
 
 **Why**: Users need to use MCPKernel **as a library** from Python code — not just as a CLI. This is the single biggest usability gap.
 
@@ -78,17 +78,17 @@ result = await proxy.call_tool("read_file", {"path": "/etc/passwd"})
 ```
 
 ### 3.2 `mcpkernel quickstart` CLI command
-**Status**: ❌ Not done → implementing now
+**Status**: ✅ Done (v0.1.2)
 
 One command that demonstrates the pipeline in action without needing any upstream server.
 
 ### 3.3 `mcpkernel status` CLI command
-**Status**: ❌ Not done → implementing now
+**Status**: ✅ Done (v0.1.2)
 
 Check running state, loaded policies, hook count, upstream status.
 
 ### 3.4 Built-in policy presets
-**Status**: ❌ Not done → implementing now
+**Status**: ✅ Done (v0.1.2)
 
 Named presets so users skip YAML authoring:
 - `permissive` — audit everything, block nothing
@@ -97,7 +97,7 @@ Named presets so users skip YAML authoring:
 - `owasp-asi-2026` — full OWASP ASI compliance rules
 
 ### 3.5 `mcpkernel.protect()` decorator
-**Status**: ❌ Not done → implementing now
+**Status**: ✅ Done (v0.1.2)
 
 One-line decorator for framework users:
 ```python
@@ -109,12 +109,12 @@ async def my_tool(code: str) -> str:
 ```
 
 ### 3.6 Improved `mcpkernel init` with presets
-**Status**: ⏳ Partial → enhancing now
+**Status**: ✅ Done (v0.1.2)
 
 `mcpkernel init --preset strict` creates a ready-to-use config.
 
 ### 3.7 Consistent feature toggles
-**Status**: ⏳ Partial → standardizing
+**Status**: ✅ Done (v0.1.2)
 
 Every feature independently enabled/disabled via config YAML + env vars.
 

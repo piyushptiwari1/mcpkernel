@@ -53,11 +53,11 @@ gh repo edit piyushptiwari1/mcpkernel \
 | # | Task | Priority | Status | Notes |
 |---|------|----------|--------|-------|
 | M-1 | ~~Confirm email + publish `mcpkernel` v0.1.0 to PyPI~~ | **P0** | **Done** ✅ | Published 2026-03-23. https://pypi.org/project/mcpkernel/0.1.0/ |
-| M-2 | Add CI badges (PyPI version, coverage, tests) to README | P1 | Not started | codecov or coveralls + PyPI badge after M-1. |
+| M-2 | ~~Add CI badges (PyPI version, coverage, tests) to README~~ | P1 | **Done** ✅ | PyPI, tests (666), coverage (81%), downloads badges added 2026-03-26. |
 | M-3 | Record 5-minute YouTube demo | P1 | Not started | "The security kernel for AI agents." |
 | M-4 | Post to Reddit r/MachineLearning, r/LocalLLaMA | P1 | After M-1 | "Stop your code from leaking into any LLM — one command." |
 | M-5 | Post to Hacker News (Show HN) | P1 | After M-1 | Focus on the simple protect command + sovereignty gateway. |
-| M-6 | Create GitHub Release v0.1.0 with changelog | P1 | After M-1 | Use `gh release create v0.1.0`. |
+| M-6 | Create GitHub Release v0.1.2 with changelog | P1 | Not started | Use `gh release create v0.1.2`. Needs `gh auth login`. |
 | M-7 | Harden eBPF/Firecracker backend stubs | P2 | Not started | Ensure graceful fallback when deps missing. |
 
 ---
@@ -75,6 +75,10 @@ gh repo edit piyushptiwari1/mcpkernel \
 
 | ID | Task | Date | Notes |
 |----|------|------|-------|
+| D-012 | **Badges added to README** | 2026-03-26 | PyPI version, tests (666), coverage (81%), downloads badges. |
+| D-011 | **Merged feature/python-api-and-preset-fixes → main** | 2026-03-26 | 16 files changed, +2449/−351 lines. Full pipeline pass (666 tests). |
+| D-010 | **Python API + presets + 11 bug fixes** | 2026-03-26 | MCPKernelProxy, protect() decorator, built-in presets, quickstart/status/presets CLI. 3 CRITICAL + 3 HIGH bugs fixed. |
+| D-009b | **Published v0.1.2 to PyPI** | 2026-03-25 | `mcpkernel` v0.1.2 — https://pypi.org/project/mcpkernel/0.1.2/ |
 | D-007 | **Published to PyPI** | 2026-03-23 | `mcpkernel` v0.1.0 — https://pypi.org/project/mcpkernel/0.1.0/ |
 | D-008 | Agent manifest module | 2026-03-23 | 5 source files, 98 new tests (443 total), 89.38% coverage. Full 16-agent pipeline pass. |
 | D-006 | Rename to MCPKernel | 2026-03-22 | Full codebase rename mcpguard → mcpseal → mcpkernel. |
