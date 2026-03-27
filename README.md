@@ -5,7 +5,7 @@
 [![CI](https://github.com/piyushptiwari1/mcpkernel/actions/workflows/ci.yml/badge.svg)](https://github.com/piyushptiwari1/mcpkernel/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/mcpkernel.svg)](https://pypi.org/project/mcpkernel/)
 [![Tests](https://img.shields.io/badge/tests-695%20passed-brightgreen.svg)](https://github.com/piyushptiwari1/mcpkernel)
-[![Coverage](https://img.shields.io/badge/coverage-81%25-yellowgreen.svg)](https://github.com/piyushptiwari1/mcpkernel)
+[![Coverage](https://img.shields.io/badge/coverage-86%25-brightgreen.svg)](https://github.com/piyushptiwari1/mcpkernel)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://python.org)
 [![Downloads](https://img.shields.io/pypi/dm/mcpkernel.svg)](https://pypi.org/project/mcpkernel/)
@@ -588,7 +588,7 @@ git clone https://github.com/piyushptiwari1/mcpkernel.git
 cd mcpkernel
 pip install -e ".[dev]"
 
-# Run tests (666 tests, ~81% coverage)
+# Run tests (695 tests, ~86% coverage)
 pytest tests/ -v --cov=mcpkernel
 
 # Lint
@@ -686,7 +686,7 @@ git clone https://github.com/piyushptiwari1/mcpkernel.git
 cd mcpkernel
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev,all]"
-pytest  # 666 tests, all should pass
+pytest  # 695 tests, all should pass
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow, commit conventions, and PR process.
