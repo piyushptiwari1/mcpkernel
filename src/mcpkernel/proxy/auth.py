@@ -83,5 +83,12 @@ def create_auth_backend(config: Any) -> AuthBackend:
     if config.api_keys:
         return APIKeyAuth(config.api_keys)
 
-    # OAuth2 / mTLS would be added here — for now fall back to NoAuth
+    # Raise explicitly if OAuth2/mTLS are configured but not implemented
+    if config.oauth2_jwks_url or config.oauth2_issuer:
+        msg = "OAuth2 auth backend is not yet implemented. Remove oauth2 config or use api_keys."
+        raise NotImplementedError(msg)
+    if config.mtls_ca_cert:
+        msg = "mTLS auth backend is not yet implemented. Remove mtls_ca_cert config or use api_keys."
+        raise NotImplementedError(msg)
+
     return NoAuth()

@@ -60,7 +60,7 @@ class ProxyConfig(BaseModel):
     workers: int = Field(default=1, ge=1)
     tls_cert: Path | None = None
     tls_key: Path | None = None
-    cors_origins: list[str] = Field(default_factory=lambda: ["*"])
+    cors_origins: list[str] = Field(default_factory=list)
     max_request_size_bytes: int = Field(default=10 * 1024 * 1024, ge=1024)
 
 

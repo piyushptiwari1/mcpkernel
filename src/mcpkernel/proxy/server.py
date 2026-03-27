@@ -35,7 +35,9 @@ from fastapi.responses import JSONResponse
 from mcp.server.lowlevel.server import Server as MCPLowLevelServer
 from mcp.types import TextContent
 
+from mcpkernel import __version__
 from mcpkernel.config import MCPKernelSettings, get_config
+from mcpkernel.observability.health import ComponentHealth, HealthCheck, HealthStatus
 from mcpkernel.observability.metrics import MetricsCollector, get_metrics
 from mcpkernel.proxy.auth import AuthCredentials, create_auth_backend
 from mcpkernel.proxy.interceptor import (
@@ -63,6 +65,7 @@ _upstream_manager: UpstreamManager | None = None
 _metrics: MetricsCollector | None = None
 _mcp_server: MCPLowLevelServer | None = None
 _session_manager: Any = None
+_health_check: HealthCheck | None = None
 
 
 def get_pipeline() -> InterceptorPipeline:
@@ -150,7 +153,7 @@ async def _forward_to_upstream(call: MCPToolCall) -> ExecutionResult:
     except Exception as exc:
         logger.error("upstream call failed", tool=call.tool_name, error=str(exc))
         return ExecutionResult(
-            content=[{"type": "text", "text": f"Upstream error: {exc}"}],
+            content=[{"type": "text", "text": "Upstream server error"}],
             is_error=True,
         )
 
@@ -234,7 +237,8 @@ def _create_mcp_server() -> MCPLowLevelServer:
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
-    global _rate_limiter, _auth_backend, _settings, _upstream_manager, _metrics, _mcp_server, _session_manager
+    global _rate_limiter, _auth_backend, _settings, _upstream_manager
+    global _metrics, _mcp_server, _session_manager, _health_check
 
     _settings = get_config()
     _metrics = get_metrics()
@@ -243,6 +247,8 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     import sys
 
     from mcpkernel import __version__
+
+    _health_check = HealthCheck(version=__version__)
 
     _metrics.set_build_info(
         __version__,
@@ -268,6 +274,17 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             count=len(_upstream_manager.connections),
             tools=len(_upstream_manager.all_tool_names),
         )
+        # Register upstream health probes
+        for name, conn in _upstream_manager.connections.items():
+
+            async def _check_upstream(n: str = name, c: Any = conn) -> ComponentHealth:
+                return ComponentHealth(
+                    name=f"upstream:{n}",
+                    status=HealthStatus.HEALTHY if c.connected else HealthStatus.UNHEALTHY,
+                    details={"connected": c.connected, "tools": len(c.tools)},
+                )
+
+            _health_check.register(f"upstream:{name}", _check_upstream)
     else:
         logger.info("no upstream servers configured — proxy will return errors for tool calls")
 
@@ -439,6 +456,8 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Cleanup (runs after session manager shuts down)
     if _policy_watcher_task is not None:
         _policy_watcher_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await _policy_watcher_task
     if langfuse_exporter:
         await langfuse_exporter.shutdown()
     await _upstream_manager.disconnect_all()
@@ -464,7 +483,7 @@ def create_proxy_app(settings: MCPKernelSettings | None = None) -> FastAPI:
 
     app = FastAPI(
         title="mcpkernel",
-        version="0.1.1",
+        version=__version__,
         description="Transparent MCP security proxy — policy, taint, audit for every tool call",
         lifespan=_lifespan,
     )
@@ -473,29 +492,39 @@ def create_proxy_app(settings: MCPKernelSettings | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=real_settings.proxy.cors_origins,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "DELETE"],
+        allow_headers=["Content-Type", "Accept", "Authorization", "Mcp-Session-Id", "Mcp-Protocol-Version"],
+        expose_headers=["Mcp-Session-Id"],
     )
 
     # ---- REST Endpoints ----
 
     @app.get("/health")
-    async def health() -> dict[str, Any]:
-        upstream_status = {}
-        if _upstream_manager:
-            for name, conn in _upstream_manager.connections.items():
-                upstream_status[name] = {
-                    "connected": conn.connected,
-                    "tools": len(conn.tools),
-                }
-        return {
-            "status": "ok",
-            "service": "mcpkernel",
-            "version": "0.1.1",
-            "mode": "proxy" if real_settings.upstream else "standalone",
-            "upstream": upstream_status,
-            "hooks": [h.NAME for h in _pipeline.hooks] if _pipeline.hooks else [],
-        }
+    async def health() -> Response:
+        if _health_check is not None:
+            report = await _health_check.check()
+            status_code = 200 if report.status != HealthStatus.UNHEALTHY else 503
+            return JSONResponse(
+                content={
+                    "status": report.status.value,
+                    "service": "mcpkernel",
+                    "version": report.version,
+                    "mode": "proxy" if real_settings.upstream else "standalone",
+                    "components": [
+                        {"name": c.name, "status": c.status.value, "details": c.details}
+                        for c in report.components
+                    ],
+                },
+                status_code=status_code,
+            )
+        return JSONResponse(
+            content={
+                "status": "healthy",
+                "service": "mcpkernel",
+                "version": __version__,
+                "mode": "proxy" if real_settings.upstream else "standalone",
+            }
+        )
 
     @app.get("/metrics")
     async def metrics_endpoint() -> Response:
@@ -527,7 +556,7 @@ def create_proxy_app(settings: MCPKernelSettings | None = None) -> FastAPI:
         """Detailed system status."""
         return {
             "service": "mcpkernel",
-            "version": "0.1.1",
+            "version": __version__,
             "pipeline_hooks": [{"name": h.NAME, "priority": h.PRIORITY} for h in _pipeline.hooks]
             if _pipeline.hooks
             else [],
@@ -554,7 +583,13 @@ def create_proxy_app(settings: MCPKernelSettings | None = None) -> FastAPI:
         """
         max_size = real_settings.proxy.max_request_size_bytes
         content_length = request.headers.get("content-length")
-        if content_length is not None and int(content_length) > max_size:
+        try:
+            if content_length is not None and int(content_length) > max_size:
+                return JSONResponse(
+                    build_jsonrpc_error(0, -32001, "Request body too large"),
+                    status_code=413,
+                )
+        except ValueError:
             return JSONResponse(
                 build_jsonrpc_error(0, -32001, "Request body too large"),
                 status_code=413,
@@ -684,12 +719,17 @@ def start_proxy_server(settings: MCPKernelSettings | None = None) -> None:
     """Start the uvicorn server (blocking)."""
     cfg = settings or get_config()
     app = create_proxy_app(settings)
+    ssl_kwargs: dict[str, Any] = {}
+    if cfg.proxy.tls_cert and cfg.proxy.tls_key:
+        ssl_kwargs["ssl_certfile"] = str(cfg.proxy.tls_cert)
+        ssl_kwargs["ssl_keyfile"] = str(cfg.proxy.tls_key)
     uvicorn.run(
         app,
         host=cfg.proxy.host,
         port=cfg.proxy.port,
         workers=cfg.proxy.workers,
         log_level="info",
+        **ssl_kwargs,
     )
 
 

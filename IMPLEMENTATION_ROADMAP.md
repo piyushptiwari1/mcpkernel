@@ -124,7 +124,7 @@ Every feature independently enabled/disabled via config YAML + env vars.
 
 | # | Item | Status |
 |---|------|--------|
-| 4.1 | OAuth2 JWT Auth Backend | ⏳ Config exists, code needed |
+| 4.1 | OAuth2 JWT Auth Backend | ⏳ Config exists; raises `NotImplementedError` if enabled |
 | 4.2 | Redis Rate Limiter | ⏳ Config exists, code needed |
 
 ---
