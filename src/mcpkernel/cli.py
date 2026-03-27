@@ -826,5 +826,328 @@ def _export_rules_yaml(rules: Sequence[PolicyRule], output_path: Path) -> None:
 _export_preset_rules_yaml = _export_rules_yaml
 
 
+# ── MCP Config Discovery ──────────────────────────────────────────────
+@app.command()
+def discover(
+    include_project: Annotated[
+        bool,
+        typer.Option("--project/--no-project", help="Include project-level configs"),
+    ] = True,
+    json_output: Annotated[bool, typer.Option("--json", help="Output as JSON")] = False,
+) -> None:
+    """Discover MCP server configurations across all installed IDE clients."""
+    import json as json_mod
+
+    from mcpkernel.integrations.discovery import discover_mcp_configs, summarize_discovery
+
+    configs = discover_mcp_configs(include_project=include_project)
+
+    if json_output:
+        output = []
+        for dc in configs:
+            output.append(
+                {
+                    "client": dc.client_name,
+                    "path": str(dc.config_path),
+                    "error": dc.error,
+                    "servers": [
+                        {"name": s.name, "command": s.command, "args": s.args, "url": s.url, "transport": s.transport}
+                        for s in dc.servers
+                    ],
+                }
+            )
+        typer.echo(json_mod.dumps(output, indent=2))
+    else:
+        typer.echo(summarize_discovery(configs))
+
+    if not configs:
+        raise typer.Exit(code=1)
+
+
+# ── Tool Poisoning Scan ───────────────────────────────────────────────
+@app.command()
+def poison_scan(
+    target: Annotated[Path | None, typer.Argument(help="MCP config file to scan (auto-discovers if omitted)")] = None,
+    sarif_output: Annotated[Path | None, typer.Option("--sarif", help="Export findings as SARIF")] = None,
+    json_output: Annotated[bool, typer.Option("--json", help="Output as JSON")] = False,
+) -> None:
+    """Scan MCP tool descriptions for poisoning, injection, and shadowing attacks."""
+    import json as json_mod
+
+    from mcpkernel.integrations.poisoning import scan_tool_descriptions
+
+    # If no target, auto-discover configs
+    if target is None:
+        from mcpkernel.integrations.discovery import discover_mcp_configs
+
+        configs = discover_mcp_configs()
+        if not configs:
+            typer.echo("No MCP configurations found. Provide a config file path.")
+            raise typer.Exit(code=1)
+
+        all_findings: list[Any] = []
+        total_tools = 0
+
+        for dc in configs:
+            if dc.error or not dc.servers:
+                continue
+            # Build tool-like objects from discovered servers for scanning
+            tools = [
+                {"name": srv.name, "description": f"MCP server: {srv.command} {' '.join(srv.args)}"}
+                for srv in dc.servers
+            ]
+            report = scan_tool_descriptions(tools, server_name=dc.client_name)
+            total_tools += report.tools_scanned
+            all_findings.extend(report.findings)
+
+        if json_output:
+            typer.echo(
+                json_mod.dumps(
+                    [
+                        {
+                            "rule_id": f.rule_id,
+                            "category": f.category.value,
+                            "severity": f.severity.value,
+                            "title": f.title,
+                            "tool_name": f.tool_name,
+                            "server_name": f.server_name,
+                        }
+                        for f in all_findings
+                    ],
+                    indent=2,
+                )
+            )
+        else:
+            if all_findings:
+                typer.echo(f"Scanned {total_tools} tool(s) — found {len(all_findings)} issue(s):\n")
+                for f in all_findings:
+                    icon = "🔴" if f.severity.value in ("critical", "high") else "🟡"
+                    typer.echo(f"  {icon} [{f.severity.value.upper()}] {f.rule_id}: {f.title}")
+                    typer.echo(f"    Tool: {f.tool_name} (server: {f.server_name})")
+                    if f.matched_text:
+                        typer.echo(f"    Match: {f.matched_text}")
+                    if f.remediation:
+                        typer.echo(f"    Fix: {f.remediation}")
+                    typer.echo()
+            else:
+                typer.echo(f"✓ Scanned {total_tools} tool(s) — no poisoning issues found.")
+
+        # SARIF export
+        if sarif_output and all_findings:
+            from mcpkernel.audit.sarif import generate_sarif, poisoning_findings_to_sarif, write_sarif
+
+            sarif_results = poisoning_findings_to_sarif(all_findings)
+            sarif_doc = generate_sarif(sarif_results)
+            write_sarif(sarif_doc, str(sarif_output))
+            typer.echo(f"  SARIF report written to {sarif_output}")
+
+        if any(f.severity.value in ("critical", "high") for f in all_findings):
+            raise typer.Exit(code=1)
+        return
+
+    # Scan a specific config file
+    if not target.exists():
+        typer.echo(f"✗ File not found: {target}", err=True)
+        raise typer.Exit(code=1)
+
+    import json as json_mod_inner
+
+    try:
+        data = json_mod_inner.loads(target.read_text())
+    except Exception as exc:
+        typer.echo(f"✗ Failed to parse {target}: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    # Extract tools from config
+    tools: list[dict[str, Any]] = []
+    servers = data.get("mcpServers", data.get("servers", data.get("mcp", {}).get("servers", {})))
+    if isinstance(servers, dict):
+        for name, cfg in servers.items():
+            desc = cfg.get("description", f"MCP server: {cfg.get('command', '')} {' '.join(cfg.get('args', []))}")
+            tools.append({"name": name, "description": desc})
+
+    report = scan_tool_descriptions(tools, server_name=str(target.name))
+
+    if json_output:
+        typer.echo(
+            json_mod.dumps(
+                [
+                    {
+                        "rule_id": f.rule_id,
+                        "category": f.category.value,
+                        "severity": f.severity.value,
+                        "title": f.title,
+                        "tool_name": f.tool_name,
+                    }
+                    for f in report.findings
+                ],
+                indent=2,
+            )
+        )
+    elif report.findings:
+        typer.echo(f"Scanned {report.tools_scanned} tool(s) — found {len(report.findings)} issue(s):\n")
+        for f in report.findings:
+            icon = "🔴" if f.severity.value in ("critical", "high") else "🟡"
+            typer.echo(f"  {icon} [{f.severity.value.upper()}] {f.rule_id}: {f.title}")
+            typer.echo(f"    Tool: {f.tool_name}")
+            if f.matched_text:
+                typer.echo(f"    Match: {f.matched_text}")
+            if f.remediation:
+                typer.echo(f"    Fix: {f.remediation}")
+            typer.echo()
+    else:
+        typer.echo(f"✓ Scanned {report.tools_scanned} tool(s) — no poisoning issues found.")
+
+    if sarif_output and report.findings:
+        from mcpkernel.audit.sarif import generate_sarif, poisoning_findings_to_sarif, write_sarif
+
+        sarif_results = poisoning_findings_to_sarif(report.findings, config_path=str(target))
+        sarif_doc = generate_sarif(sarif_results)
+        write_sarif(sarif_doc, str(sarif_output))
+        typer.echo(f"  SARIF report written to {sarif_output}")
+
+    if report.has_blockers:
+        raise typer.Exit(code=1)
+
+
+# ── MCP Server Mode ──────────────────────────────────────────────────
+@app.command()
+def mcp_serve(
+    transport: Annotated[str, typer.Option(help="Transport: stdio or http")] = "stdio",
+    port: Annotated[int, typer.Option(help="HTTP port (only for http transport)")] = 8100,
+) -> None:
+    """Run MCPKernel as an MCP server exposing security tools.
+
+    Agents and IDEs can call MCPKernel tools (scan, validate, discover,
+    taint check, skill scan, doctor) via the MCP protocol.
+
+    Add to Claude Desktop:
+        {"mcpServers": {"mcpkernel": {"command": "mcpkernel", "args": ["mcp-serve"]}}}
+    """
+    if transport == "stdio":
+        from mcpkernel.mcp_server import run_mcp_stdio_server
+
+        asyncio.run(run_mcp_stdio_server())
+    else:
+        typer.echo(f"MCPKernel MCP server on http://127.0.0.1:{port}/mcp")
+        typer.echo("Use stdio transport for now (http coming soon).")
+        raise typer.Exit(code=1)
+
+
+# ── Install / Uninstall ──────────────────────────────────────────────
+@app.command()
+def install(
+    target: Annotated[
+        str,
+        typer.Argument(help="Target client: claude, cursor, vscode, windsurf, zed, openclaw, goose"),
+    ],
+    mode: Annotated[str, typer.Option(help="Mode: tools (MCP tools) or proxy (security proxy)")] = "tools",
+    force: Annotated[bool, typer.Option("--force", help="Overwrite existing config")] = False,
+) -> None:
+    """Install MCPKernel as an MCP server in a target IDE/client.
+
+    Examples:
+        mcpkernel install claude        # Add security tools to Claude Desktop
+        mcpkernel install cursor        # Add to Cursor IDE
+        mcpkernel install openclaw      # Add to OpenClaw assistant
+        mcpkernel install vscode --mode proxy  # Run as proxy in VS Code
+    """
+    from mcpkernel.integrations.installer import install_to_target
+
+    result = install_to_target(target, mode=mode, force=force)
+    if result.success:
+        typer.echo(f"✓ {result.message}")
+        if result.backup_path:
+            typer.echo(f"  Backup saved to {result.backup_path}")
+        typer.echo(f"\n  Config: {result.config_path}")
+        typer.echo("  Restart the client to activate MCPKernel.")
+    else:
+        typer.echo(f"✗ {result.message}", err=True)
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def uninstall(
+    target: Annotated[str, typer.Argument(help="Target client to remove MCPKernel from")],
+) -> None:
+    """Remove MCPKernel from a target client's MCP configuration."""
+    from mcpkernel.integrations.installer import uninstall_from_target
+
+    result = uninstall_from_target(target)
+    if result.success:
+        typer.echo(f"✓ {result.message}")
+    else:
+        typer.echo(f"✗ {result.message}", err=True)
+        raise typer.Exit(code=1)
+
+
+# ── Doctor ───────────────────────────────────────────────────────────
+@app.command()
+def doctor() -> None:
+    """Run MCPKernel health diagnostics.
+
+    Checks Python version, dependencies, config files, exposed secrets,
+    file permissions, and optional tool availability.
+    """
+    from mcpkernel.integrations.doctor import run_diagnostics
+
+    report = asyncio.run(run_diagnostics())
+    typer.echo(report)
+
+
+# ── Skill Scanner ────────────────────────────────────────────────────
+@app.command()
+def scan_skill(
+    skill_path: Annotated[Path, typer.Argument(help="Path to SKILL.md or directory containing skills")],
+    json_output: Annotated[bool, typer.Option("--json", help="Output as JSON")] = False,
+) -> None:
+    """Scan OpenClaw/ClawHub SKILL.md files for security issues.
+
+    Detects dangerous shell commands, exfiltration patterns, hidden
+    instructions, file system overreach, and metadata mismatches.
+    """
+    import json as json_mod
+
+    if skill_path.is_dir():
+        from mcpkernel.integrations.skill_scanner import scan_skill_directory
+
+        results = asyncio.run(scan_skill_directory(skill_path))
+        if json_output:
+            typer.echo(json_mod.dumps(results, indent=2))
+        elif results:
+            total = sum(len(findings) for findings in results.values())
+            typer.echo(f"Scanned directory — found {total} issue(s) across {len(results)} skill(s):\n")
+            for path, findings in results.items():
+                typer.echo(f"  {path}:")
+                for f in findings:
+                    icon = "🔴" if f["severity"] in ("critical", "high") else "🟡"
+                    typer.echo(f"    {icon} [{f['severity'].upper()}] {f['title']}")
+                    if f.get("detail"):
+                        typer.echo(f"      {f['detail']}")
+                typer.echo()
+            if any(f["severity"] in ("critical", "high") for findings in results.values() for f in findings):
+                raise typer.Exit(code=1)
+        else:
+            typer.echo("✓ No security issues found in skills.")
+    else:
+        from mcpkernel.integrations.skill_scanner import scan_skill_file
+
+        findings = asyncio.run(scan_skill_file(skill_path))
+        if json_output:
+            typer.echo(json_mod.dumps(findings, indent=2))
+        elif findings:
+            typer.echo(f"Found {len(findings)} issue(s) in {skill_path}:\n")
+            for f in findings:
+                icon = "🔴" if f["severity"] in ("critical", "high") else "🟡"
+                typer.echo(f"  {icon} [{f['severity'].upper()}] {f['title']}")
+                if f.get("detail"):
+                    typer.echo(f"    {f['detail']}")
+            typer.echo()
+            if any(f["severity"] in ("critical", "high") for f in findings):
+                raise typer.Exit(code=1)
+        else:
+            typer.echo(f"✓ No security issues found in {skill_path}")
+
+
 if __name__ == "__main__":
     app()

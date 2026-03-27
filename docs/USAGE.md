@@ -774,6 +774,143 @@ agent_scan:
 
 ---
 
+## MCPKernel as MCP Server (Agent-Callable Security Tools)
+
+Instead of running MCPKernel only as a proxy gateway, you can expose it as an **MCP server** that any agent can call directly. This gives your AI agents native access to security scanning, taint checking, policy validation, and diagnostics.
+
+### How It Works
+
+MCPKernel runs a JSON-RPC 2.0 server over stdio, exposing 6 security tools that any MCP client can call:
+
+| Tool | What It Does |
+|------|-------------|
+| `mcpkernel_scan_tool` | Scan a tool's description for poisoning, shadowing, Unicode obfuscation |
+| `mcpkernel_validate_policy` | Validate a YAML policy file for syntax and logic errors |
+| `mcpkernel_discover_configs` | Find all MCP configurations across installed IDEs |
+| `mcpkernel_check_taint` | Check text for leaked secrets, PII, and API keys |
+| `mcpkernel_scan_skill` | Audit an OpenClaw/ClawHub SKILL.md for dangerous patterns |
+| `mcpkernel_doctor` | Run health diagnostics on the MCPKernel installation |
+
+### Quick Start
+
+```bash
+mcpkernel mcp-serve
+```
+
+### Add to Claude Desktop
+
+```json
+{
+    "mcpServers": {
+        "mcpkernel": {
+            "command": "mcpkernel",
+            "args": ["mcp-serve"]
+        }
+    }
+}
+```
+
+### One-Command Install (7 IDEs)
+
+Instead of editing config files manually, use the installer:
+
+```bash
+mcpkernel install claude      # Claude Desktop
+mcpkernel install cursor      # Cursor IDE
+mcpkernel install vscode      # VS Code + Copilot
+mcpkernel install windsurf    # Windsurf
+mcpkernel install zed         # Zed
+mcpkernel install openclaw    # OpenClaw
+mcpkernel install goose       # Goose
+```
+
+The installer auto-detects config paths, creates backups, and handles IDE-specific formats.
+
+### Remove MCPKernel
+
+```bash
+mcpkernel uninstall claude
+```
+
+---
+
+## Multi-IDE MCP Config Discovery
+
+Auto-discover all MCP configurations across IDEs installed on your system:
+
+```bash
+mcpkernel discover
+mcpkernel discover --json
+```
+
+Checks: Claude Desktop, Cursor, VS Code, Windsurf, Zed, OpenClaw, Goose — all platform paths.
+
+---
+
+## Tool Poisoning Detection
+
+MCP Tool Poisoning Attacks (TPAs) exploit hidden instructions in tool descriptions to exfiltrate data. MCPKernel detects these.
+
+```bash
+mcpkernel poison-scan
+mcpkernel poison-scan --json
+mcpkernel poison-scan --sarif report.sarif
+```
+
+Detects: hidden `<IMPORTANT>` blocks, Unicode obfuscation, tool shadowing, data exfiltration patterns, side-channel parameters.
+
+---
+
+## OpenClaw/ClawHub Skill Scanner
+
+Scan SKILL.md files before installation to detect supply chain attacks:
+
+```bash
+mcpkernel scan-skill path/to/SKILL.md
+mcpkernel scan-skill skills/ --json
+```
+
+Detects: `curl|bash` pipes, `rm -rf`, exfiltration endpoints, `eval()`/`os.system()`, hardcoded API keys, hidden instructions, undeclared env vars, and 25+ patterns total.
+
+---
+
+## Doctor Diagnostics
+
+Comprehensive health check for MCPKernel installations:
+
+```bash
+mcpkernel doctor
+```
+
+Checks: Python version, required/optional dependencies, config file validity, exposed secrets in environment, tool availability, file permissions.
+
+---
+
+## DLP Chain Detection
+
+Prevents multi-hop data leaks across tool boundaries — even through intermediate transformations:
+
+```yaml
+rules:
+  - id: DLP-001
+    name: Block PII from outbound HTTP
+    action: deny
+    tool_patterns: ["http_post", "send_email", "fetch"]
+    taint_labels: [pii, secret]
+```
+
+---
+
+## SARIF Output (CI/CD Integration)
+
+Export scan results in SARIF v2.1.0 for GitHub Code Scanning, Azure DevOps, and CI/CD:
+
+```bash
+mcpkernel poison-scan --sarif results.sarif
+```
+
+---
+
 ## Troubleshooting
 
 ### MCPKernel won't start

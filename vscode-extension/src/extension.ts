@@ -6,6 +6,8 @@ let gatewayProcess: cp.ChildProcess | undefined;
 let statusBarItem: vscode.StatusBarItem;
 let outputChannel: vscode.OutputChannel;
 let diagnosticCollection: vscode.DiagnosticCollection;
+let serversTreeProvider: MCPServersTreeProvider;
+let findingsTreeProvider: SecurityFindingsTreeProvider;
 
 export function activate(context: vscode.ExtensionContext) {
   outputChannel = vscode.window.createOutputChannel("MCPKernel");
@@ -42,9 +44,29 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("mcpkernel.auditQuery", cmdAuditQuery),
     vscode.commands.registerCommand("mcpkernel.traceList", cmdTraceList),
     vscode.commands.registerCommand("mcpkernel.addServer", cmdAddServer),
+    vscode.commands.registerCommand("mcpkernel.discover", cmdDiscover),
+    vscode.commands.registerCommand("mcpkernel.poisonScan", cmdPoisonScan),
+    vscode.commands.registerCommand(
+      "mcpkernel.refreshDiscovery",
+      cmdRefreshDiscovery
+    ),
     statusBarItem,
     outputChannel,
     diagnosticCollection
+  );
+
+  // Register tree views
+  serversTreeProvider = new MCPServersTreeProvider();
+  findingsTreeProvider = new SecurityFindingsTreeProvider();
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider(
+      "mcpkernel.discoveredServers",
+      serversTreeProvider
+    ),
+    vscode.window.registerTreeDataProvider(
+      "mcpkernel.securityFindings",
+      findingsTreeProvider
+    )
   );
 
   // Auto-validate policy files on save
@@ -327,5 +349,238 @@ async function cmdAddServer() {
     vscode.window.showErrorMessage(
       `Failed to add server: ${result.stderr}`
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// New commands: Discover, Poison Scan, Refresh Discovery
+// ---------------------------------------------------------------------------
+
+interface DiscoveredServer {
+  name: string;
+  client: string;
+  config_path: string;
+  transport: string;
+  command?: string;
+  url?: string;
+  warnings?: string[];
+}
+
+interface PoisonFinding {
+  tool: string;
+  server: string;
+  category: string;
+  severity: string;
+  message: string;
+  pattern?: string;
+}
+
+async function cmdDiscover() {
+  const result = await runCli(["discover", "--json"]);
+  if (result.code !== 0) {
+    vscode.window.showErrorMessage(
+      `Discovery failed: ${result.stderr || "Unknown error"}`
+    );
+    outputChannel.appendLine(result.stderr);
+    return;
+  }
+
+  try {
+    const configs = JSON.parse(result.stdout);
+    serversTreeProvider.update(configs);
+    outputChannel.clear();
+    outputChannel.appendLine("=== MCP Config Discovery ===\n");
+    outputChannel.appendLine(
+      `Found ${configs.length} configuration source(s)\n`
+    );
+    for (const cfg of configs) {
+      outputChannel.appendLine(
+        `  ${cfg.client}: ${cfg.config_path} (${(cfg.servers || []).length} server(s))`
+      );
+      for (const srv of cfg.servers || []) {
+        outputChannel.appendLine(
+          `    - ${srv.name} [${srv.transport || "stdio"}]`
+        );
+        if (srv.warnings) {
+          for (const w of srv.warnings) {
+            outputChannel.appendLine(`      ⚠ ${w}`);
+          }
+        }
+      }
+    }
+    outputChannel.show(true);
+    vscode.window.showInformationMessage(
+      `Discovered ${configs.length} MCP config source(s)`
+    );
+  } catch {
+    outputChannel.clear();
+    outputChannel.appendLine("=== MCP Config Discovery ===\n");
+    outputChannel.appendLine(result.stdout);
+    outputChannel.show(true);
+  }
+}
+
+async function cmdPoisonScan() {
+  const result = await runCli(["poison-scan", "--json"]);
+  if (result.code !== 0 && !result.stdout) {
+    vscode.window.showErrorMessage(
+      `Poison scan failed: ${result.stderr || "Unknown error"}`
+    );
+    outputChannel.appendLine(result.stderr);
+    return;
+  }
+
+  try {
+    const report = JSON.parse(result.stdout);
+    const findings: PoisonFinding[] = report.findings || [];
+    findingsTreeProvider.update(findings);
+    outputChannel.clear();
+    outputChannel.appendLine("=== Tool Poisoning Scan ===\n");
+
+    if (findings.length === 0) {
+      outputChannel.appendLine("No poisoning findings detected.");
+      vscode.window.showInformationMessage(
+        "No tool poisoning issues detected"
+      );
+    } else {
+      outputChannel.appendLine(`Found ${findings.length} issue(s):\n`);
+      for (const f of findings) {
+        const icon =
+          f.severity === "CRITICAL"
+            ? "🔴"
+            : f.severity === "HIGH"
+              ? "🟠"
+              : f.severity === "MEDIUM"
+                ? "🟡"
+                : "🔵";
+        outputChannel.appendLine(
+          `  ${icon} [${f.severity}] ${f.tool} (${f.server}): ${f.message}`
+        );
+      }
+      vscode.window.showWarningMessage(
+        `Tool poisoning scan found ${findings.length} issue(s) — see Output panel`
+      );
+    }
+    outputChannel.show(true);
+  } catch {
+    outputChannel.clear();
+    outputChannel.appendLine("=== Tool Poisoning Scan ===\n");
+    outputChannel.appendLine(result.stdout);
+    outputChannel.show(true);
+  }
+}
+
+async function cmdRefreshDiscovery() {
+  await cmdDiscover();
+}
+
+// ---------------------------------------------------------------------------
+// TreeView providers
+// ---------------------------------------------------------------------------
+
+class MCPServersTreeProvider
+  implements vscode.TreeDataProvider<vscode.TreeItem>
+{
+  private _onDidChangeTreeData = new vscode.EventEmitter<
+    vscode.TreeItem | undefined
+  >();
+  readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+  private configs: Array<{
+    client: string;
+    config_path: string;
+    servers: DiscoveredServer[];
+  }> = [];
+
+  update(
+    configs: Array<{
+      client: string;
+      config_path: string;
+      servers: DiscoveredServer[];
+    }>
+  ) {
+    this.configs = configs;
+    this._onDidChangeTreeData.fire(undefined);
+  }
+
+  getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
+    return element;
+  }
+
+  getChildren(element?: vscode.TreeItem): vscode.TreeItem[] {
+    if (!element) {
+      if (this.configs.length === 0) {
+        const item = new vscode.TreeItem(
+          "Run Discover to scan for MCP configs"
+        );
+        item.iconPath = new vscode.ThemeIcon("info");
+        return [item];
+      }
+      return this.configs.map((c) => {
+        const item = new vscode.TreeItem(
+          c.client,
+          vscode.TreeItemCollapsibleState.Expanded
+        );
+        item.description = `${(c.servers || []).length} server(s)`;
+        item.tooltip = c.config_path;
+        item.iconPath = new vscode.ThemeIcon("remote-explorer");
+        item.contextValue = "mcpClient";
+        return item;
+      });
+    }
+
+    const cfg = this.configs.find((c) => c.client === element.label);
+    if (!cfg) {
+      return [];
+    }
+    return (cfg.servers || []).map((s) => {
+      const item = new vscode.TreeItem(s.name);
+      item.description = s.transport || "stdio";
+      item.tooltip = s.command || s.url || "";
+      item.iconPath = new vscode.ThemeIcon("server-process");
+      return item;
+    });
+  }
+}
+
+class SecurityFindingsTreeProvider
+  implements vscode.TreeDataProvider<vscode.TreeItem>
+{
+  private _onDidChangeTreeData = new vscode.EventEmitter<
+    vscode.TreeItem | undefined
+  >();
+  readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+  private findings: PoisonFinding[] = [];
+
+  update(findings: PoisonFinding[]) {
+    this.findings = findings;
+    this._onDidChangeTreeData.fire(undefined);
+  }
+
+  getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
+    return element;
+  }
+
+  getChildren(): vscode.TreeItem[] {
+    if (this.findings.length === 0) {
+      const item = new vscode.TreeItem("Run Poison Scan to check for issues");
+      item.iconPath = new vscode.ThemeIcon("info");
+      return [item];
+    }
+    return this.findings.map((f) => {
+      const icon =
+        f.severity === "CRITICAL" || f.severity === "HIGH"
+          ? "error"
+          : f.severity === "MEDIUM"
+            ? "warning"
+            : "info";
+      const item = new vscode.TreeItem(
+        `${f.tool}: ${f.message}`,
+        vscode.TreeItemCollapsibleState.None
+      );
+      item.description = `[${f.severity}] ${f.server}`;
+      item.tooltip = f.pattern || f.message;
+      item.iconPath = new vscode.ThemeIcon(icon);
+      return item;
+    });
   }
 }

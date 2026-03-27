@@ -134,7 +134,8 @@ class TestOAuth2Auth:
         with (
             patch("httpx.AsyncClient", return_value=mock_client),
             patch("jwt.decode", side_effect=pyjwt.ExpiredSignatureError("expired")),
-            patch("jwt.PyJWKClient", return_value=mock_jwk_client),pytest.raises(AuthError, match="expired")
+            patch("jwt.PyJWKClient", return_value=mock_jwk_client),
+            pytest.raises(AuthError, match="expired"),
         ):
             await auth.authenticate({"authorization": "Bearer expired.jwt.token"})
 
@@ -164,7 +165,8 @@ class TestOAuth2Auth:
         with (
             patch("httpx.AsyncClient", return_value=mock_client),
             patch("jwt.decode", side_effect=pyjwt.InvalidAudienceError("bad aud")),
-            patch("jwt.PyJWKClient", return_value=mock_jwk_client),pytest.raises(AuthError, match="audience")
+            patch("jwt.PyJWKClient", return_value=mock_jwk_client),
+            pytest.raises(AuthError, match="audience"),
         ):
             await auth.authenticate({"authorization": "Bearer bad.aud.token"})
 

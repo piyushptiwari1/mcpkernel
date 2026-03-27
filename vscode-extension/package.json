@@ -82,8 +82,45 @@
         "command": "mcpkernel.addServer",
         "title": "MCPKernel: Add Upstream Server",
         "category": "MCPKernel"
+      },
+      {
+        "command": "mcpkernel.discover",
+        "title": "MCPKernel: Discover MCP Configs",
+        "category": "MCPKernel"
+      },
+      {
+        "command": "mcpkernel.poisonScan",
+        "title": "MCPKernel: Scan for Tool Poisoning",
+        "category": "MCPKernel"
+      },
+      {
+        "command": "mcpkernel.refreshDiscovery",
+        "title": "MCPKernel: Refresh MCP Discovery",
+        "icon": "$(refresh)",
+        "category": "MCPKernel"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "mcpkernel",
+          "title": "MCPKernel",
+          "icon": "$(shield)"
+        }
+      ]
+    },
+    "views": {
+      "mcpkernel": [
+        {
+          "id": "mcpkernel.discoveredServers",
+          "name": "MCP Servers"
+        },
+        {
+          "id": "mcpkernel.securityFindings",
+          "name": "Security Findings"
+        }
+      ]
+    },
     "configuration": {
       "title": "MCPKernel",
       "properties": {
