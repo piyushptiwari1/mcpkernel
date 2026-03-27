@@ -362,7 +362,7 @@ class TestCLIVersion:
         runner = CliRunner()
         result = runner.invoke(app, ["version"])
         assert result.exit_code == 0
-        assert "0.1.2" in result.output
+        assert "0.1.3" in result.output
 
 
 # ── Import tests ──────────────────────────────────────────────────────
@@ -390,7 +390,7 @@ class TestImports:
     def test_import_version(self):
         from mcpkernel import __version__
 
-        assert __version__ == "0.1.2"
+        assert __version__ == "0.1.3"
 
     def test_import_errors(self):
         from mcpkernel import (

@@ -511,8 +511,7 @@ def create_proxy_app(settings: MCPKernelSettings | None = None) -> FastAPI:
                     "version": report.version,
                     "mode": "proxy" if real_settings.upstream else "standalone",
                     "components": [
-                        {"name": c.name, "status": c.status.value, "details": c.details}
-                        for c in report.components
+                        {"name": c.name, "status": c.status.value, "details": c.details} for c in report.components
                     ],
                 },
                 status_code=status_code,

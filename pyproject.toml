@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mcpkernel"
-version = "0.1.2"
+version = "0.1.3"
 description = "Open-source MCP/A2A security gateway — policy enforcement, taint tracking, sandboxed execution, deterministic envelopes, and Sigstore audit for every AI agent tool call. OWASP ASI 2026 compliant."
 readme = "README.md"
 license = "Apache-2.0"
