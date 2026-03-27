@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **CORS default** changed from `["*"]` to `[]` — users must now explicitly configure `cors_origins` in their settings (secure-by-default)
+- **Health endpoint** now returns structured `HealthReport` with `status: "healthy"|"degraded"|"unhealthy"` and a `components` list for upstream health probes; returns HTTP 503 when unhealthy (previously returned `"status": "ok"`)
+- **Auth backends**: OAuth2 and mTLS now raise `NotImplementedError` with a descriptive message if configured (previously silently fell through to NoAuth)
+- **Error sanitization**: Upstream errors no longer leak internal details to clients
+- **Content-Length**: Malformed values now return HTTP 413 instead of crashing
+- **Request IDs**: Now unique per request instead of hardcoded
+
+### Added
+- **TLS support**: `tls_cert` and `tls_key` config options are now wired to uvicorn for native HTTPS
+- **`python -m mcpkernel`** entrypoint via `__main__.py`
+- **PEP 561 `py.typed`** marker added for type checker support
+
+### Fixed
+- **MCP SDK** dependency pinned to `>=1.23,<2` to prevent breaking changes from upstream
+
 ## [0.1.2] — 2026-03-25
 
 ### Added

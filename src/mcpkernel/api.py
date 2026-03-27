@@ -23,7 +23,7 @@ import functools
 from pathlib import Path
 from typing import Any
 
-from mcpkernel.utils import get_logger
+from mcpkernel.utils import generate_request_id, get_logger
 
 logger = get_logger(__name__)
 
@@ -298,7 +298,7 @@ class MCPKernelProxy:
         from mcpkernel.utils import PolicyViolation
 
         call = MCPToolCall(
-            request_id="api-0",
+            request_id=generate_request_id(),
             tool_name=tool_name,
             arguments=arguments or {},
             raw_jsonrpc={"method": "tools/call", "params": {"name": tool_name}},
@@ -486,7 +486,7 @@ def protect(
             from mcpkernel.utils import PolicyViolation
 
             call = MCPToolCall(
-                request_id="protect-0",
+                request_id=generate_request_id(),
                 tool_name=tool_name,
                 arguments=arguments,
                 raw_jsonrpc={"method": "tools/call", "params": {"name": tool_name}},

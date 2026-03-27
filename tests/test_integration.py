@@ -282,7 +282,7 @@ class TestDevModeEndToEnd:
             resp = await client.get("/health")
             assert resp.status_code == 200
             data = resp.json()
-            assert data["status"] == "ok"
+            assert data["status"] == "healthy"
             assert data["service"] == "mcpkernel"
 
     async def test_tool_call_success(self, dev_settings: MCPKernelSettings) -> None:

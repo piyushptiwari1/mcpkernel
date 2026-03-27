@@ -33,7 +33,7 @@ class HealthReport:
 class HealthCheck:
     """Aggregate health status from registered components."""
 
-    def __init__(self, version: str = "0.1.0") -> None:
+    def __init__(self, version: str = "") -> None:
         self._version = version
         self._checks: dict[str, Callable[[], Awaitable[ComponentHealth]]] = {}
 
