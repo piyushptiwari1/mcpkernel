@@ -203,9 +203,9 @@ def _create_mcp_server() -> MCPLowLevelServer:
         result = await _upstream_manager.read_resource(str(uri))
         for content in result.contents:
             if hasattr(content, "text"):
-                return content.text
+                return str(content.text)
             if hasattr(content, "blob"):
-                return content.blob
+                return str(content.blob)
         return ""
 
     @server.list_prompts()  # type: ignore[no-untyped-call, untyped-decorator]

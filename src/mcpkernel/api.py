@@ -135,7 +135,7 @@ class MCPKernelProxy:
         """Tool names available from upstream servers."""
         if self._upstream_manager is None:
             return set()
-        return self._upstream_manager.all_tool_names
+        return set(self._upstream_manager.all_tool_names)
 
     async def start(self) -> None:
         """Initialize the security pipeline and connect to upstreams.
@@ -388,7 +388,7 @@ class MCPKernelProxy:
                     setattr(current, k, v)
 
         # Build upstream configs
-        upstream_configs = []
+        upstream_configs: list[UpstreamServerConfig] = []
         for spec in self._upstream_specs:
             if isinstance(spec, str):
                 upstream_configs.append(UpstreamServerConfig(name=f"server-{len(upstream_configs)}", url=spec))

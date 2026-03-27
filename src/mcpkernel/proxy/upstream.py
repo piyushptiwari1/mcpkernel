@@ -22,7 +22,7 @@ if TYPE_CHECKING:
         GetPromptResult,
         ListToolsResult,
         Prompt,
-        ReadResourceContentsResponse,
+        ReadResourceResult,
         Resource,
         ResourceTemplate,
         Tool,
@@ -169,7 +169,7 @@ class UpstreamConnection:
             logger.debug("upstream does not support resources", name=self._config.name)
             return []
 
-    async def read_resource(self, uri: str) -> ReadResourceContentsResponse:
+    async def read_resource(self, uri: str) -> ReadResourceResult:
         """Read a resource by URI from the upstream server."""
         if self._session is None:
             msg = f"Not connected to upstream server '{self._config.name}'"
@@ -381,7 +381,7 @@ class UpstreamManager:
             all_templates.extend(templates)
         return all_templates
 
-    async def read_resource(self, uri: str) -> ReadResourceContentsResponse:
+    async def read_resource(self, uri: str) -> ReadResourceResult:
         """Route a resource read to the correct upstream server."""
         conn = self.get_server_for_resource(uri)
         if conn is None:
