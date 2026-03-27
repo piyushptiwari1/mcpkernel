@@ -1,0 +1,24 @@
+{
+  "name": "mcpkernel",
+  "version": "0.1.3",
+  "description": "MCP/A2A security gateway — policy engine, taint tracking, sandboxed execution, deterministic envelopes, and tamper-proof audit for AI agent tool calls.",
+  "author": {
+    "name": "Piyush Tiwari",
+    "url": "https://github.com/piyushptiwari1"
+  },
+  "homepage": "https://github.com/piyushptiwari1/mcpkernel",
+  "repository": "https://github.com/piyushptiwari1/mcpkernel",
+  "license": "Apache-2.0",
+  "keywords": [
+    "mcp",
+    "security",
+    "gateway",
+    "proxy",
+    "taint-tracking",
+    "sandbox",
+    "policy-engine",
+    "audit",
+    "owasp",
+    "ai-agents"
+  ]
+}

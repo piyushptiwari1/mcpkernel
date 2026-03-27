@@ -504,10 +504,11 @@ class TestFirecrackerSandboxExecution:
 
 
 class TestWASMSandboxExecution:
-    """Cover WASMSandbox.execute_code() with mocked wasmtime."""
+    """Cover WASMSandbox.execute_code() with the script fallback path."""
 
     @pytest.mark.asyncio
-    async def test_execute_no_wasmtime(self):
+    async def test_execute_no_wasmtime_with_wasm_bytes(self):
+        """WASM bytecode path raises SandboxError when wasmtime is missing."""
         from mcpkernel.sandbox.wasm_backend import WASMSandbox
         from mcpkernel.utils import SandboxError
 
@@ -515,27 +516,50 @@ class TestWASMSandboxExecution:
         cfg.default_timeout_seconds = 10
 
         sb = WASMSandbox(cfg)
+        # \x00asm prefix triggers the WASM module path
         with patch.dict("sys.modules", {"wasmtime": None}), pytest.raises((SandboxError, ModuleNotFoundError)):
-            await sb.execute_code("print()")
+            await sb.execute_code("\x00asm" + "rest")
 
     @pytest.mark.asyncio
-    async def test_execute_with_mocked_wasmtime(self):
+    async def test_execute_script_fallback(self):
+        """Script text path runs code via subprocess and captures stdout."""
         from mcpkernel.sandbox.wasm_backend import WASMSandbox
 
         cfg = MagicMock()
         cfg.default_timeout_seconds = 10
-
-        mock_wasmtime = MagicMock()
-        mock_engine = MagicMock()
-        mock_store = MagicMock()
-        mock_wasmtime.Engine.return_value = mock_engine
-        mock_wasmtime.Store.return_value = mock_store
+        cfg.wasm_interpreter_path = None
 
         sb = WASMSandbox(cfg)
-        with patch.dict("sys.modules", {"wasmtime": mock_wasmtime}):
-            result = await sb.execute_code("print('hello')")
+        result = await sb.execute_code("print('hello from wasm sandbox')")
         assert not result.is_error
-        assert "WASM execution placeholder" in result.content[0]["text"]
+        assert "hello from wasm sandbox" in result.content[0]["text"]
+
+    @pytest.mark.asyncio
+    async def test_execute_script_error(self):
+        """Script that raises should return is_error=True."""
+        from mcpkernel.sandbox.wasm_backend import WASMSandbox
+
+        cfg = MagicMock()
+        cfg.default_timeout_seconds = 10
+        cfg.wasm_interpreter_path = None
+
+        sb = WASMSandbox(cfg)
+        result = await sb.execute_code("raise ValueError('boom')")
+        assert result.is_error
+
+    @pytest.mark.asyncio
+    async def test_execute_script_timeout(self):
+        """Script that exceeds timeout should return is_error=True."""
+        from mcpkernel.sandbox.wasm_backend import WASMSandbox
+
+        cfg = MagicMock()
+        cfg.default_timeout_seconds = 1
+        cfg.wasm_interpreter_path = None
+
+        sb = WASMSandbox(cfg)
+        result = await sb.execute_code("import time; time.sleep(10)")
+        assert result.is_error
+        assert "timed out" in result.content[0]["text"].lower()
 
 
 class TestMicrosandboxExecution:

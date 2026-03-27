@@ -1,0 +1,37 @@
+---
+description: "MCPKernel security rules for AI agent tool calls. Use when working with MCP tool servers, AI agents, or any code that makes autonomous tool calls."
+globs: "**/*.py,**/*.yaml,**/*.yml"
+alwaysApply: false
+---
+
+# MCPKernel Security Rules
+
+## Tool Call Safety
+- Never pass raw user input directly to tool calls without sanitization
+- Always validate tool arguments against expected types and ranges
+- Block tool calls that access sensitive files (.env, .pem, .key, credentials)
+- Sandbox all code execution tools — never run on the host directly
+
+## Policy Configuration
+- Define YAML policies in `policies/` directory
+- Each rule needs: id, name, action (allow/deny/log), and tool_patterns
+- Map rules to OWASP ASI 2026 categories (ASI-01 through ASI-08)
+- Use `arg_patterns` with regex to match dangerous argument values
+
+## Taint Tracking
+- Mark all external inputs (user prompts, API responses) as tainted
+- Track taint labels: SECRET, PII, USER_INPUT across tool boundaries
+- Block tainted data from reaching sensitive sinks (network, file write)
+- Use FULL taint mode in production, LIGHT for development
+
+## Audit & Compliance
+- Enable DEE (Deterministic Execution Envelopes) for audit trails
+- Every tool execution should be replayable with cryptographic verification
+- Export audit logs in CEF format for SIEM integration
+- Verify audit log integrity before compliance reporting
+
+## Agent Integration
+- Use `mcpkernel serve` as a proxy between agent and MCP tool servers
+- Configure via `mcpkernel.yaml` at project root
+- Test policies with `mcpkernel validate-policy <file>`
+- Scan Python files for taint issues with `mcpkernel scan <file>`

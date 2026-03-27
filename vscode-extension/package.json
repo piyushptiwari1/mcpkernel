@@ -1,0 +1,168 @@
+{
+  "name": "mcpkernel",
+  "displayName": "MCPKernel — AI Agent Security Gateway",
+  "description": "Policy editing, taint tracking, and gateway management for MCPKernel — the security kernel for AI agents.",
+  "version": "0.1.0",
+  "publisher": "piyushptiwari1",
+  "license": "Apache-2.0",
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Other",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "mcp",
+    "security",
+    "ai-agents",
+    "policy",
+    "taint-tracking",
+    "sandbox",
+    "owasp"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/piyushptiwari1/mcpkernel"
+  },
+  "homepage": "https://github.com/piyushptiwari1/mcpkernel",
+  "bugs": {
+    "url": "https://github.com/piyushptiwari1/mcpkernel/issues"
+  },
+  "activationEvents": [
+    "workspaceContains:.mcpkernel",
+    "onLanguage:yaml"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "mcpkernel.init",
+        "title": "MCPKernel: Initialize Project",
+        "category": "MCPKernel"
+      },
+      {
+        "command": "mcpkernel.serve",
+        "title": "MCPKernel: Start Gateway",
+        "category": "MCPKernel"
+      },
+      {
+        "command": "mcpkernel.stop",
+        "title": "MCPKernel: Stop Gateway",
+        "category": "MCPKernel"
+      },
+      {
+        "command": "mcpkernel.status",
+        "title": "MCPKernel: Show Status",
+        "category": "MCPKernel"
+      },
+      {
+        "command": "mcpkernel.validatePolicy",
+        "title": "MCPKernel: Validate Policy File",
+        "category": "MCPKernel"
+      },
+      {
+        "command": "mcpkernel.scan",
+        "title": "MCPKernel: Taint Scan Current File",
+        "category": "MCPKernel"
+      },
+      {
+        "command": "mcpkernel.auditQuery",
+        "title": "MCPKernel: Query Audit Logs",
+        "category": "MCPKernel"
+      },
+      {
+        "command": "mcpkernel.traceList",
+        "title": "MCPKernel: List Execution Traces",
+        "category": "MCPKernel"
+      },
+      {
+        "command": "mcpkernel.addServer",
+        "title": "MCPKernel: Add Upstream Server",
+        "category": "MCPKernel"
+      }
+    ],
+    "configuration": {
+      "title": "MCPKernel",
+      "properties": {
+        "mcpkernel.pythonPath": {
+          "type": "string",
+          "default": "mcpkernel",
+          "description": "Path to mcpkernel CLI binary or 'mcpkernel' if on PATH"
+        },
+        "mcpkernel.autoValidatePolicy": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically validate policy YAML files on save"
+        },
+        "mcpkernel.gatewayHost": {
+          "type": "string",
+          "default": "127.0.0.1",
+          "description": "Host for the MCPKernel gateway server"
+        },
+        "mcpkernel.gatewayPort": {
+          "type": "number",
+          "default": 8000,
+          "description": "Port for the MCPKernel gateway server"
+        }
+      }
+    },
+    "yamlValidation": [
+      {
+        "fileMatch": [
+          "policies/*.yaml",
+          "policies/*.yml",
+          ".mcpkernel/policies/*.yaml",
+          ".mcpkernel/policies/*.yml"
+        ],
+        "url": "./schemas/policy.schema.json"
+      },
+      {
+        "fileMatch": [
+          ".mcpkernel/config.yaml",
+          ".mcpkernel/config.yml",
+          "mcpkernel.yaml",
+          "mcpkernel.yml"
+        ],
+        "url": "./schemas/config.schema.json"
+      }
+    ],
+    "languages": [
+      {
+        "id": "mcpkernel-policy",
+        "aliases": ["MCPKernel Policy"],
+        "extensions": [],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "mcpkernel.scan",
+          "when": "editorLangId == python",
+          "group": "mcpkernel"
+        },
+        {
+          "command": "mcpkernel.validatePolicy",
+          "when": "editorLangId == yaml",
+          "group": "mcpkernel"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  },
+  "extensionDependencies": [
+    "redhat.vscode-yaml"
+  ]
+}

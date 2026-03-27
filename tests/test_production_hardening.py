@@ -208,38 +208,39 @@ class TestHealthCheckWiring:
 
 
 # =====================================================================
-# SPEC-018: Auth ConfigError for OAuth2/mTLS
+# SPEC-018: Auth backends — OAuth2, mTLS, API keys
 # =====================================================================
 
 
-class TestAuthNotImplemented:
-    """OAuth2 and mTLS should raise NotImplementedError."""
+class TestAuthBackends:
+    """OAuth2 and mTLS backends are now implemented."""
 
-    def test_oauth2_raises_not_implemented(self):
+    def test_oauth2_creates_backend(self):
         from mcpkernel.config import AuthConfig
-        from mcpkernel.proxy.auth import create_auth_backend
+        from mcpkernel.proxy.auth import OAuth2Auth, create_auth_backend
 
         config = AuthConfig(enabled=True, oauth2_jwks_url="https://example.com/.well-known/jwks.json")
-        with pytest.raises(NotImplementedError, match="OAuth2"):
-            create_auth_backend(config)
+        backend = create_auth_backend(config)
+        assert isinstance(backend, OAuth2Auth)
 
-    def test_oauth2_issuer_raises_not_implemented(self):
+    def test_oauth2_issuer_without_jwks_raises_error(self):
         from mcpkernel.config import AuthConfig
         from mcpkernel.proxy.auth import create_auth_backend
+        from mcpkernel.utils import AuthError
 
         config = AuthConfig(enabled=True, oauth2_issuer="https://example.com")
-        with pytest.raises(NotImplementedError, match="OAuth2"):
+        with pytest.raises(AuthError, match="oauth2_jwks_url is required"):
             create_auth_backend(config)
 
-    def test_mtls_raises_not_implemented(self, tmp_path: Path):
+    def test_mtls_creates_backend(self, tmp_path: Path):
         from mcpkernel.config import AuthConfig
-        from mcpkernel.proxy.auth import create_auth_backend
+        from mcpkernel.proxy.auth import MTLSAuth, create_auth_backend
 
         ca = tmp_path / "ca.pem"
         ca.touch()
         config = AuthConfig(enabled=True, mtls_ca_cert=ca)
-        with pytest.raises(NotImplementedError, match="mTLS"):
-            create_auth_backend(config)
+        backend = create_auth_backend(config)
+        assert isinstance(backend, MTLSAuth)
 
     def test_api_keys_still_works(self):
         from mcpkernel.config import AuthConfig

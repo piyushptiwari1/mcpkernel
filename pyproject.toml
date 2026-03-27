@@ -64,6 +64,7 @@ dependencies = [
     "prometheus-client>=0.20",
     "aiosqlite>=0.20",
     "cryptography>=42.0",
+    "PyJWT[crypto]>=2.8",
 ]
 
 [project.optional-dependencies]

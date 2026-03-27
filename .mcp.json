@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "mcpkernel": {
+      "command": "mcpkernel",
+      "args": ["serve", "--host", "127.0.0.1", "--port", "8000"],
+      "env": {
+        "MCPKERNEL_LOG_LEVEL": "info"
+      }
+    }
+  }
+}

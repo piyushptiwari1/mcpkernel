@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MCPKernel Configuration",
+  "description": "MCPKernel gateway configuration file schema.",
+  "type": "object",
+  "properties": {
+    "proxy": {
+      "type": "object",
+      "properties": {
+        "host": { "type": "string", "default": "127.0.0.1" },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535, "default": 8080 },
+        "workers": { "type": "integer", "minimum": 1, "default": 1 }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "api_keys": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of valid API keys for Bearer token auth"
+        },
+        "oauth2_jwks_url": { "type": "string", "format": "uri" },
+        "oauth2_issuer": { "type": "string" },
+        "oauth2_audience": { "type": "string" },
+        "mtls_ca_cert": { "type": "string" }
+      }
+    },
+    "upstream": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "url"],
+        "properties": {
+          "name": { "type": "string" },
+          "url": { "type": "string", "format": "uri" },
+          "transport": {
+            "type": "string",
+            "enum": ["streamable_http", "sse", "stdio"],
+            "default": "streamable_http"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          },
+          "command": { "type": "string" },
+          "args": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "sandbox": {
+      "type": "object",
+      "properties": {
+        "backend": {
+          "type": "string",
+          "enum": ["docker", "firecracker", "wasm", "microsandbox"],
+          "default": "docker"
+        },
+        "default_timeout_seconds": { "type": "integer", "minimum": 1, "default": 30 },
+        "max_cpu_cores": { "type": "number", "minimum": 0.1, "default": 1.0 },
+        "max_memory_mb": { "type": "integer", "minimum": 64, "default": 256 },
+        "max_disk_mb": { "type": "integer", "minimum": 64, "default": 512 },
+        "network_enabled": { "type": "boolean", "default": false },
+        "docker_image": { "type": "string", "default": "python:3.12-slim" }
+      }
+    },
+    "taint": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["full", "light", "off"],
+          "default": "light"
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "properties": {
+        "default_action": {
+          "type": "string",
+          "enum": ["allow", "deny", "audit"],
+          "default": "deny"
+        },
+        "policy_paths": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "dee": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "sign_traces": { "type": "boolean", "default": false },
+        "store_path": { "type": "string" }
+      }
+    },
+    "observability": {
+      "type": "object",
+      "properties": {
+        "log_level": {
+          "type": "string",
+          "enum": ["DEBUG", "INFO", "WARNING", "ERROR"],
+          "default": "INFO"
+        },
+        "metrics_enabled": { "type": "boolean", "default": true },
+        "otlp_endpoint": { "type": "string" }
+      }
+    },
+    "langfuse": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "public_key": { "type": "string" },
+        "secret_key": { "type": "string" },
+        "host": { "type": "string", "default": "https://cloud.langfuse.com" }
+      }
+    },
+    "guardrails_ai": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "pii_validator": { "type": "boolean", "default": true },
+        "secrets_validator": { "type": "boolean", "default": true },
+        "toxic_content": { "type": "boolean", "default": false }
+      }
+    },
+    "registry": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "registry_url": { "type": "string", "format": "uri" }
+      }
+    }
+  }
+}

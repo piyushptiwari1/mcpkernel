@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MCPKernel Policy",
+  "description": "MCPKernel YAML policy file schema — defines security rules for AI agent tool calls.",
+  "type": "object",
+  "properties": {
+    "rules": {
+      "type": "array",
+      "description": "List of policy rules to evaluate against tool calls.",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "action"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique rule identifier (e.g., ASI-03-001)",
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable rule name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Detailed description of what this rule does"
+          },
+          "action": {
+            "type": "string",
+            "enum": ["allow", "deny", "audit", "sandbox"],
+            "description": "Action to take when rule matches"
+          },
+          "priority": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000,
+            "description": "Rule evaluation priority (lower = higher priority)"
+          },
+          "tool_patterns": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Regex patterns to match tool names"
+          },
+          "arg_patterns": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "Regex patterns to match argument values by key"
+          },
+          "taint_labels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["secret", "pii", "user_input", "api_key", "jwt", "credit_card", "ssn"]
+            },
+            "description": "Taint labels that trigger this rule"
+          },
+          "owasp_asi_id": {
+            "type": "string",
+            "enum": ["ASI-01", "ASI-02", "ASI-03", "ASI-04", "ASI-05", "ASI-06", "ASI-07", "ASI-08"],
+            "description": "OWASP ASI 2026 control mapping"
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether this rule is active"
+          },
+          "conditions": {
+            "type": "object",
+            "properties": {
+              "time_window": { "type": "string" },
+              "rate_limit": { "type": "integer" },
+              "identity_pattern": { "type": "string" }
+            },
+            "description": "Additional conditions for rule matching"
+          }
+        }
+      }
+    }
+  },
+  "required": ["rules"]
+}
