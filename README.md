@@ -146,6 +146,26 @@ The MCP ecosystem is growing fast — but security hasn't kept pace. Here are th
 - **Guardrails AI Validation** — enhanced PII, secret, and toxicity detection via Guardrails hub validators
 - **MCP Server Registry** — discover, search, and validate upstream MCP servers from the official registry
 
+### Causal Trust Graph (CTG) — *Novel Research Contribution*
+- **Adaptive Trust Decay** — tool/server trust erodes exponentially: T(t) = T₀ · e^{-λ(t-t₀)} · Π w(vᵢ)
+- **Retroactive Taint Invalidation** — when a source is compromised, all downstream data is retroactively tainted
+- **Behavioral Fingerprinting** — detects anomalous tool-call patterns via graph topology z-scores
+- **Minimum Privilege Computation** — derives provably minimal permissions from observed causal chains
+- **Causal Chain Analysis** — trace any tool output back to its root data sources
+
+### Security Protections (MCP Spec 2025-11-25)
+- **Confused Deputy Defense** — prevents cross-server delegation attacks with tool/server allowlists
+- **Token Passthrough Guard** — blocks credential leakage (OpenAI keys, GitHub PATs, AWS keys, JWTs) in args and results
+- **SSRF Guard** — blocks private networks, cloud metadata (169.254.169.254), with domain allowlists
+- **Session Hijacking Defense** — HMAC-bound sessions with client fingerprint verification and expiry
+- **Memory Poisoning Defense** — detects self-reinforcing injection (Zombie Agents) with repetition scoring
+- **Unified Security Pipeline** — run all checks in a single `pipeline.check_tool_call()` invocation
+
+### Compliance Presets
+- **One-Line Activation** — `apply_preset("hipaa", settings)` configures all security controls
+- **5 Built-in Presets** — HIPAA, SOC 2, PCI DSS v4.0, GDPR Article 25, FedRAMP High
+- **YAML Configurable** — set `compliance.preset: hipaa` in your config file
+
 ---
 
 ## Getting Started

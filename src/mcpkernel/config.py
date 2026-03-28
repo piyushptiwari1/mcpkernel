@@ -224,6 +224,28 @@ class AgentScanConfig(BaseModel):
     auto_generate_policy: bool = True
 
 
+class TrustConfig(BaseModel):
+    """Causal Trust Graph settings."""
+
+    enabled: bool = True
+    decay_rate: float = Field(default=0.001, gt=0, description="Default trust decay λ (per-second)")
+    server_decay_rate: float = Field(default=0.0005, gt=0)
+    tool_decay_rate: float = Field(default=0.001, gt=0)
+    agent_decay_rate: float = Field(default=0.002, gt=0)
+    alert_threshold: float = Field(default=0.3, ge=0, le=1)
+    compromise_threshold: float = Field(default=0.1, ge=0, le=1)
+    anomaly_sigma: float = Field(default=2.5, gt=0, description="Z-score threshold for behavioral anomaly")
+    anomaly_min_observations: int = Field(default=5, ge=1)
+    retroactive_invalidation: bool = True
+
+
+class ComplianceConfig(BaseModel):
+    """Compliance preset configuration."""
+
+    preset: str | None = Field(default=None, description="One of: hipaa, soc2, pci_dss, gdpr, fedramp, none")
+    custom_rules: list[str] = Field(default_factory=list)
+
+
 class UpstreamServerConfig(BaseModel):
     """Configuration for a single upstream MCP server."""
 
@@ -277,6 +299,8 @@ class MCPKernelSettings(BaseSettings):
     guardrails_ai: GuardrailsIntegrationConfig = Field(default_factory=GuardrailsIntegrationConfig)
     registry: RegistryConfig = Field(default_factory=RegistryConfig)
     agent_scan: AgentScanConfig = Field(default_factory=AgentScanConfig)
+    trust: TrustConfig = Field(default_factory=TrustConfig)
+    compliance: ComplianceConfig = Field(default_factory=ComplianceConfig)
     upstream: list[UpstreamServerConfig] = Field(
         default_factory=list,
         description="Upstream MCP servers to proxy to. If empty, MCPKernel runs in sandbox-only mode.",

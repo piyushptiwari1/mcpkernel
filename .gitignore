@@ -71,3 +71,4 @@ src/mcpkernel/ebpf/programs/*.o
 .github/prompts/write-tests.prompt.md
 .github/prompts/use-case-research.prompt.md
 .github/prompts/agent-audit.prompt.md
+site/

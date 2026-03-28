@@ -1,0 +1,98 @@
+site_name: MCPKernel
+site_url: https://piyushptiwari1.github.io/mcpkernel/
+site_description: >-
+  The security kernel for AI agents — policy enforcement, taint tracking,
+  sandboxed execution, and deterministic envelopes for every MCP tool call.
+
+repo_name: piyushptiwari1/mcpkernel
+repo_url: https://github.com/piyushptiwari1/mcpkernel
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.indexes
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.tabs.link
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/piyushptiwari1/mcpkernel
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/mcpkernel/
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - Configuration: getting-started/configuration.md
+  - Core Security:
+    - Policy Engine: core/policy-engine.md
+    - Taint Tracking: core/taint-tracking.md
+    - Sandbox Execution: core/sandbox.md
+    - Deterministic Envelopes: core/dee.md
+  - Trust Framework:
+    - Causal Trust Graph: trust/causal-trust-graph.md
+    - Trust Decay: trust/trust-decay.md
+    - Behavioral Fingerprinting: trust/behavioral.md
+    - Retroactive Taint: trust/retroactive.md
+  - Security Protections:
+    - Overview: security/overview.md
+    - Attack Defenses: security/attack-defenses.md
+  - Compliance:
+    - Presets: compliance/presets.md
+  - Integrations:
+    - IDE Setup: integrations/ide-setup.md
+    - Framework Examples: integrations/frameworks.md
+  - CLI Reference: cli/reference.md
+  - API Reference: api/reference.md
+  - Troubleshooting: troubleshooting.md

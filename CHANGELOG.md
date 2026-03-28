@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] — 2026-03-28
+
+### Added
+- **Causal Trust Graph (CTG)** — novel framework unifying causal attribution, trust decay, taint propagation, and behavioral anomaly detection (`src/mcpkernel/trust/`)
+  - `CausalTrustGraph`: DAG of tool-call causality with trust scoring and retroactive invalidation
+  - `TrustScore`: exponential trust decay model T(t) = T₀ · e^{-λ(t-t₀)} · Π w(vᵢ)
+  - `TrustDecayEngine`: manage trust profiles for servers, tools, and agents with verification events
+  - `BehavioralFingerprint` + `AnomalyDetector`: z-score anomaly detection on graph topology features
+  - `RetroactiveTaintEngine`: propagate taint backward through time when sources are compromised
+- **Security Protections** (`src/mcpkernel/security.py`) — defenses against all 6 MCP spec-named attacks:
+  - `ConfusedDeputyGuard`: tool/server allowlists with cross-server delegation blocking
+  - `TokenPassthroughGuard`: detects OpenAI keys, GitHub PATs, AWS keys, JWTs in args/results
+  - `SSRFGuard`: blocks private networks, cloud metadata endpoints, with domain allowlists
+  - `SessionGuard`: HMAC-bound sessions with client fingerprint verification and expiry
+  - `MemoryPoisoningGuard`: detects self-reinforcing injection (Zombie Agents) with repetition scoring
+  - `SecurityPipeline`: unified check for all protections in a single call
+- **Compliance Presets** (`src/mcpkernel/compliance.py`) — one-line regulatory compliance:
+  - 5 presets: HIPAA, SOC 2, PCI DSS v4.0, GDPR Article 25, FedRAMP High
+  - `apply_preset("hipaa", settings)` configures all security controls
+- **TrustConfig** and **ComplianceConfig** added to `config.py`
+- **89 new tests** for trust, security, and compliance modules (873 total tests)
+
 ## [0.1.3] — 2026-03-27
 
 ### Changed
