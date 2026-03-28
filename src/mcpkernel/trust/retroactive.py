@@ -132,9 +132,7 @@ class RetroactiveTaintEngine:
 
                 # Penalize trust score
                 if penalize:
-                    downstream_node.trust.verification_weights.append(
-                        penalty_factor
-                    )
+                    downstream_node.trust.verification_weights.append(penalty_factor)
 
                 logger.info(
                     "retroactive_taint_applied",
@@ -170,9 +168,7 @@ class RetroactiveTaintEngine:
         )
         return event
 
-    def get_contamination_chain(
-        self, node_id: str
-    ) -> list[dict[str, Any]]:
+    def get_contamination_chain(self, node_id: str) -> list[dict[str, Any]]:
         """Trace backward to find how taint reached a node.
 
         Returns a chain of nodes from the compromised source to this node.
@@ -182,14 +178,16 @@ class RetroactiveTaintEngine:
         for nid in chain:
             node = self._graph._nodes.get(nid)
             if node:
-                result.append({
-                    "node_id": nid,
-                    "tool_name": node.tool_name,
-                    "server_name": node.server_name,
-                    "trust": node.trust.current(),
-                    "status": node.trust.status().value,
-                    "taint_labels": sorted(node.taint_labels),
-                })
+                result.append(
+                    {
+                        "node_id": nid,
+                        "tool_name": node.tool_name,
+                        "server_name": node.server_name,
+                        "trust": node.trust.current(),
+                        "status": node.trust.status().value,
+                        "taint_labels": sorted(node.taint_labels),
+                    }
+                )
         return result
 
     @property

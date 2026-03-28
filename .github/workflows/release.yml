@@ -10,7 +10,31 @@ permissions:
   id-token: write
 
 jobs:
+  ci-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: uv pip install --system -e ".[dev]" pip-audit
+      - name: Ruff lint
+        run: ruff check src/ tests/
+      - name: Ruff format check
+        run: ruff format --check src/ tests/
+      - name: Mypy
+        run: mypy src/mcpkernel/
+      - name: Run tests
+        run: pytest tests/ -v --tb=short --cov=mcpkernel --cov-fail-under=80
+      - name: Security audit
+        run: |
+          uv pip freeze --system --exclude-editable > /tmp/audit-requirements.txt
+          pip-audit --desc on -r /tmp/audit-requirements.txt
+
   build:
+    needs: ci-gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -178,10 +178,7 @@ def apply_preset(preset_name: str, settings: Any) -> Any:
     """
     name = preset_name.lower().strip()
     if name not in PRESETS:
-        raise ValueError(
-            f"Unknown compliance preset '{preset_name}'. "
-            f"Available: {', '.join(PRESET_NAMES)}"
-        )
+        raise ValueError(f"Unknown compliance preset '{preset_name}'. Available: {', '.join(PRESET_NAMES)}")
 
     overrides = PRESETS[name]
     for section_key, section_overrides in overrides.items():

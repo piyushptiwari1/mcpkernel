@@ -124,15 +124,15 @@ class TrustDecayEngine:
         if not profile:
             return 0.0
         score = profile.current_trust(now)
-        if score < self._alert_threshold and entity_id not in {
-            a["entity_id"] for a in self._alerts
-        }:
-            self._alerts.append({
-                "entity_id": entity_id,
-                "score": score,
-                "timestamp": time.time(),
-                "reason": "trust_below_threshold",
-            })
+        if score < self._alert_threshold and entity_id not in {a["entity_id"] for a in self._alerts}:
+            self._alerts.append(
+                {
+                    "entity_id": entity_id,
+                    "score": score,
+                    "timestamp": time.time(),
+                    "reason": "trust_below_threshold",
+                }
+            )
             logger.warning(
                 "trust_alert",
                 entity_id=entity_id,
@@ -196,11 +196,13 @@ class TrustDecayEngine:
                 details={"reason": reason},
             )
         )
-        profile.penalty_history.append({
-            "factor": factor,
-            "reason": reason,
-            "timestamp": time.time(),
-        })
+        profile.penalty_history.append(
+            {
+                "factor": factor,
+                "reason": reason,
+                "timestamp": time.time(),
+            }
+        )
         logger.warning(
             "trust_penalty",
             entity_id=entity_id,

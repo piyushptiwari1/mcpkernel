@@ -117,12 +117,8 @@ class TestCausalTrustGraph:
 
     def test_compute_minimum_privileges(self):
         g = CausalTrustGraph()
-        n1 = g.add_node(
-            tool_name="read", server_name="fs", permissions={"read", "list"}
-        )
-        n2 = g.add_node(
-            tool_name="write", server_name="fs", permissions={"write"}
-        )
+        n1 = g.add_node(tool_name="read", server_name="fs", permissions={"read", "list"})
+        n2 = g.add_node(tool_name="write", server_name="fs", permissions={"write"})
         g.add_edge(n1.node_id, n2.node_id)
         privs = g.compute_minimum_privileges("fs")
         assert "read" in privs
@@ -252,9 +248,7 @@ class TestAnomalyDetector:
         detector = AnomalyDetector(sigma_threshold=3.0, min_observations=3)
         detector.register_entity("agent-1")
         for _ in range(5):
-            anomalies = detector.observe(
-                "agent-1", ToolCallFeatures(total_calls=5, unique_tools=2)
-            )
+            anomalies = detector.observe("agent-1", ToolCallFeatures(total_calls=5, unique_tools=2))
         assert len(anomalies) == 0
 
     def test_anomaly_detected(self):
@@ -262,13 +256,9 @@ class TestAnomalyDetector:
         detector.register_entity("agent-1")
         # Establish baseline
         for _ in range(10):
-            detector.observe(
-                "agent-1", ToolCallFeatures(total_calls=5, unique_tools=2)
-            )
+            detector.observe("agent-1", ToolCallFeatures(total_calls=5, unique_tools=2))
         # Inject anomaly
-        anomalies = detector.observe(
-            "agent-1", ToolCallFeatures(total_calls=500, unique_tools=50)
-        )
+        anomalies = detector.observe("agent-1", ToolCallFeatures(total_calls=500, unique_tools=50))
         assert len(anomalies) > 0
         assert any(a["feature"] == "total_calls" for a in anomalies)
 
@@ -287,12 +277,8 @@ class TestAnomalyDetector:
 class TestExtractFeatures:
     def test_extract_from_graph(self):
         g = CausalTrustGraph()
-        n1 = g.add_node(
-            tool_name="read", server_name="fs", permissions={"read"}
-        )
-        n2 = g.add_node(
-            tool_name="write", server_name="fs", permissions={"write"}
-        )
+        n1 = g.add_node(tool_name="read", server_name="fs", permissions={"read"})
+        n2 = g.add_node(tool_name="write", server_name="fs", permissions={"write"})
         g.add_edge(n1.node_id, n2.node_id, edge_type="data_flow")
         features = extract_features(g)
         assert features.total_calls == 2
@@ -320,9 +306,7 @@ class TestRetroactiveTaintEngine:
 
         tracker = TaintTracker()
         engine = RetroactiveTaintEngine(g, tracker)
-        event = engine.invalidate_source(
-            n1.node_id, reason="compromised_api"
-        )
+        event = engine.invalidate_source(n1.node_id, reason="compromised_api")
         assert n1.node_id not in event.affected_node_ids  # source itself not in affected list
         assert len(event.affected_node_ids) == 2
         assert "untrusted_external" in n2.taint_labels

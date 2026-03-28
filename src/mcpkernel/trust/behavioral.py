@@ -170,9 +170,7 @@ def _find_roots(graph: CausalTrustGraph) -> list[str]:
     return [nid for nid in graph._nodes if nid not in all_targets]
 
 
-def _bfs_max_depth(
-    graph: CausalTrustGraph, start_id: str
-) -> int:
+def _bfs_max_depth(graph: CausalTrustGraph, start_id: str) -> int:
     """BFS to find the max depth from a starting node."""
     visited: set[str] = set()
     queue: list[tuple[str, int]] = [(start_id, 0)]

@@ -380,13 +380,15 @@ class CausalTrustGraph:
 
             score = node.trust.current(now)
             if score < 0.5:
-                low_trust.append({
-                    "node_id": node.node_id,
-                    "tool": node.tool_name,
-                    "server": node.server_name,
-                    "score": round(score, 4),
-                    "status": status_str,
-                })
+                low_trust.append(
+                    {
+                        "node_id": node.node_id,
+                        "tool": node.tool_name,
+                        "server": node.server_name,
+                        "score": round(score, 4),
+                        "status": status_str,
+                    }
+                )
 
         return {
             "total_nodes": self.node_count,

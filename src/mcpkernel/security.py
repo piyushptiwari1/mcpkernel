@@ -103,18 +103,11 @@ class ConfusedDeputyGuard:
             )
 
         # Cross-server delegation check
-        if (
-            self._deny_cross_server
-            and caller_server
-            and caller_server != server_name
-        ):
+        if self._deny_cross_server and caller_server and caller_server != server_name:
             return SecurityVerdict(
                 allowed=False,
                 check_name="confused_deputy",
-                reason=(
-                    f"Cross-server delegation denied: "
-                    f"'{caller_server}' → '{server_name}'"
-                ),
+                reason=(f"Cross-server delegation denied: '{caller_server}' → '{server_name}'"),
                 severity="critical",
             )
 
@@ -158,13 +151,9 @@ class TokenPassthroughGuard:
         self._mode = mode
         self._patterns = list(_SECRET_PATTERNS)
         if extra_patterns:
-            self._patterns.extend(
-                re.compile(p, re.IGNORECASE) for p in extra_patterns
-            )
+            self._patterns.extend(re.compile(p, re.IGNORECASE) for p in extra_patterns)
 
-    def scan_arguments(
-        self, tool_name: str, arguments: dict[str, Any]
-    ) -> SecurityVerdict:
+    def scan_arguments(self, tool_name: str, arguments: dict[str, Any]) -> SecurityVerdict:
         """Scan tool arguments for leaked credentials."""
         for key, value in arguments.items():
             if not isinstance(value, str):
@@ -186,9 +175,7 @@ class TokenPassthroughGuard:
                     )
         return SecurityVerdict(allowed=True, check_name="token_passthrough")
 
-    def scan_result(
-        self, tool_name: str, content: str
-    ) -> SecurityVerdict:
+    def scan_result(self, tool_name: str, content: str) -> SecurityVerdict:
         """Scan tool result content for leaked credentials."""
         for pattern in self._patterns:
             if pattern.search(content):
@@ -226,12 +213,14 @@ _PRIVATE_CIDR_PATTERNS = [
     ]
 ]
 
-_CLOUD_METADATA_HOSTS = frozenset({
-    "169.254.169.254",  # AWS/GCP/Azure metadata
-    "metadata.google.internal",
-    "metadata.gic.internal",
-    "100.100.100.200",  # Alibaba Cloud metadata
-})
+_CLOUD_METADATA_HOSTS = frozenset(
+    {
+        "169.254.169.254",  # AWS/GCP/Azure metadata
+        "metadata.google.internal",
+        "metadata.gic.internal",
+        "100.100.100.200",  # Alibaba Cloud metadata
+    }
+)
 
 
 class SSRFGuard:
@@ -299,9 +288,7 @@ class SSRFGuard:
 
         return SecurityVerdict(allowed=True, check_name="ssrf")
 
-    def scan_arguments(
-        self, arguments: dict[str, Any]
-    ) -> SecurityVerdict:
+    def scan_arguments(self, arguments: dict[str, Any]) -> SecurityVerdict:
         """Scan all string arguments for URLs containing SSRF patterns."""
         url_pattern = re.compile(r"https?://[^\s\"'<>]+", re.IGNORECASE)
         for key, value in arguments.items():
@@ -448,15 +435,11 @@ class MemoryPoisoningGuard:
     ) -> None:
         self._patterns = list(_INJECTION_PATTERNS)
         if extra_patterns:
-            self._patterns.extend(
-                re.compile(p, re.IGNORECASE) for p in extra_patterns
-            )
+            self._patterns.extend(re.compile(p, re.IGNORECASE) for p in extra_patterns)
         self._max_rep = max_repetition_score
         self._content_hashes: dict[str, list[str]] = {}  # tool → recent hashes
 
-    def scan_content(
-        self, content: str, *, tool_name: str = "unknown"
-    ) -> SecurityVerdict:
+    def scan_content(self, content: str, *, tool_name: str = "unknown") -> SecurityVerdict:
         """Scan content for injection patterns."""
         for pattern in self._patterns:
             match = pattern.search(content)
@@ -476,9 +459,7 @@ class MemoryPoisoningGuard:
                 )
         return SecurityVerdict(allowed=True, check_name="memory_poisoning")
 
-    def check_repetition(
-        self, content: str, tool_name: str
-    ) -> SecurityVerdict:
+    def check_repetition(self, content: str, tool_name: str) -> SecurityVerdict:
         """Detect self-reinforcing content by tracking hash continuity.
 
         If the same tool keeps producing content with high hash similarity
@@ -499,10 +480,7 @@ class MemoryPoisoningGuard:
                 return SecurityVerdict(
                     allowed=False,
                     check_name="memory_poisoning",
-                    reason=(
-                        f"Self-reinforcing content detected "
-                        f"(repetition score: {rep_score:.2f})"
-                    ),
+                    reason=(f"Self-reinforcing content detected (repetition score: {rep_score:.2f})"),
                     severity="warning",
                     metadata={"repetition_score": rep_score},
                 )
@@ -572,14 +550,10 @@ class SecurityPipeline:
         )
 
         # 2. Token passthrough (arguments)
-        verdicts.append(
-            self.token_guard.scan_arguments(tool_name, arguments)
-        )
+        verdicts.append(self.token_guard.scan_arguments(tool_name, arguments))
 
         # 3. SSRF check on arguments
-        verdicts.append(
-            self.ssrf_guard.scan_arguments(arguments)
-        )
+        verdicts.append(self.ssrf_guard.scan_arguments(arguments))
 
         return verdicts
 
@@ -592,16 +566,10 @@ class SecurityPipeline:
         verdicts: list[SecurityVerdict] = []
 
         # Token leakage in results
-        verdicts.append(
-            self.token_guard.scan_result(tool_name, content)
-        )
+        verdicts.append(self.token_guard.scan_result(tool_name, content))
 
         # Memory poisoning check
-        verdicts.append(
-            self.memory_guard.scan_content(content, tool_name=tool_name)
-        )
-        verdicts.append(
-            self.memory_guard.check_repetition(content, tool_name)
-        )
+        verdicts.append(self.memory_guard.scan_content(content, tool_name=tool_name))
+        verdicts.append(self.memory_guard.check_repetition(content, tool_name))
 
         return verdicts
