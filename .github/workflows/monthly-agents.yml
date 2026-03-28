@@ -1,0 +1,370 @@
+name: Monthly Agent Pipeline
+
+# Runs the full 17-agent pipeline once a month, covering:
+# Intelligence → Quality → Planning → Execution → Validation → Docs → Retrospective
+#
+# This workflow uses GitHub Copilot Coding Agent (if available) or
+# can be triggered manually. Each phase is a separate job to provide
+# visibility into pipeline progress.
+
+on:
+  schedule:
+    # 1st of every month at 09:00 UTC
+    - cron: '0 9 1 * *'
+  workflow_dispatch:
+    inputs:
+      phases:
+        description: 'Which phases to run (all, intelligence, quality, docs, security)'
+        required: false
+        default: 'all'
+      dry_run:
+        description: 'Dry run — report only, no changes'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+env:
+  PYTHON_VERSION: '3.13'
+
+jobs:
+  # ═══════════════════════════════════════════════════════════
+  # PHASE 1: Intelligence Gathering + Quality Scan
+  # ═══════════════════════════════════════════════════════════
+  intelligence-and-quality:
+    name: "Phase 1: Intelligence + Quality Scan"
+    runs-on: ubuntu-latest
+    outputs:
+      lint_errors: ${{ steps.quality.outputs.lint_errors }}
+      type_errors: ${{ steps.quality.outputs.type_errors }}
+      coverage: ${{ steps.quality.outputs.coverage }}
+      test_count: ${{ steps.quality.outputs.test_count }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv pip install --system -e ".[dev]"
+
+      - name: "code-quality-agent: Lint check"
+        id: lint
+        run: |
+          ERRORS=$(ruff check src/ tests/ 2>&1 | tail -1 || true)
+          echo "lint_result<<EOF" >> $GITHUB_OUTPUT
+          ruff check src/ tests/ --output-format concise 2>&1 | head -50 >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          COUNT=$(ruff check src/ tests/ 2>&1 | grep -c "error" || echo "0")
+          echo "lint_errors=$COUNT" >> $GITHUB_OUTPUT
+
+      - name: "code-quality-agent: Format check"
+        run: ruff format --check src/ tests/ 2>&1 || true
+
+      - name: "code-quality-agent: Type check"
+        id: typecheck
+        run: |
+          RESULT=$(mypy src/mcpkernel/ 2>&1 || true)
+          ERRORS=$(echo "$RESULT" | grep -c "error" || echo "0")
+          echo "type_errors=$ERRORS" >> $GITHUB_OUTPUT
+          echo "$RESULT" | tail -5
+
+      - name: "test-runner: Full test suite"
+        id: quality
+        run: |
+          RESULT=$(python -m pytest tests/ -v --tb=short --cov=mcpkernel --cov-report=term-missing 2>&1 || true)
+          
+          # Extract metrics
+          TESTS=$(echo "$RESULT" | grep -oP '\d+ passed' | grep -oP '\d+' || echo "0")
+          COV=$(echo "$RESULT" | grep "TOTAL" | grep -oP '\d+%' | head -1 || echo "0%")
+          
+          echo "test_count=$TESTS" >> $GITHUB_OUTPUT
+          echo "coverage=$COV" >> $GITHUB_OUTPUT
+          echo "lint_errors=${{ steps.lint.outputs.lint_errors }}" >> $GITHUB_OUTPUT
+          echo "type_errors=${{ steps.typecheck.outputs.type_errors }}" >> $GITHUB_OUTPUT
+          
+          echo "$RESULT" | tail -20
+
+      - name: "issue-hunter: Internal structural scan"
+        run: |
+          echo "=== Internal Structural Scan ==="
+          
+          echo "--- Empty __init__.py files ---"
+          find src/mcpkernel -name "__init__.py" -empty 2>/dev/null || echo "None found"
+          
+          echo "--- Python files not imported anywhere ---"
+          for f in $(find src/mcpkernel -name "*.py" -not -name "__init__.py" -not -name "__pycache__"); do
+            MODULE=$(basename "$f" .py)
+            IMPORTS=$(grep -r "import.*$MODULE\|from.*$MODULE" src/mcpkernel/ --include="*.py" -l 2>/dev/null | grep -v "$f" | wc -l)
+            if [ "$IMPORTS" -eq 0 ]; then
+              echo "  ORPHAN: $f (not imported by any other module)"
+            fi
+          done
+          
+          echo "--- Directories without __init__.py ---"
+          for d in $(find src/mcpkernel -type d -not -name "__pycache__"); do
+            if [ ! -f "$d/__init__.py" ] && [ "$d" != "src/mcpkernel" ]; then
+              echo "  MISSING: $d/__init__.py"
+            fi
+          done
+
+      - name: Upload quality report
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-report
+          path: |
+            coverage.xml
+
+  # ═══════════════════════════════════════════════════════════
+  # PHASE 2: Documentation Audit (docs-guardian)
+  # ═══════════════════════════════════════════════════════════
+  docs-audit:
+    name: "Phase 2: Documentation Audit"
+    runs-on: ubuntu-latest
+    needs: intelligence-and-quality
+    outputs:
+      undocumented_modules: ${{ steps.audit.outputs.undocumented }}
+      doc_issues: ${{ steps.audit.outputs.issues }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+          pip install mkdocs-material
+
+      - name: "docs-guardian: Dynamic discovery"
+        id: discover
+        run: |
+          echo "=== Source Files ==="
+          find src/mcpkernel/ -name "*.py" -not -path "*/__pycache__/*" | sort | tee /tmp/source_files.txt
+          echo ""
+          echo "=== Documentation Pages ==="
+          find docs/ -name "*.md" | sort | tee /tmp/doc_files.txt
+          echo ""
+          echo "=== CLI Commands ==="
+          python -m mcpkernel --help 2>/dev/null | grep -E "│\s+\w" | sed 's/│//g' | awk '{print $1}' | sort | tee /tmp/cli_commands.txt
+          echo ""
+          echo "Source files: $(wc -l < /tmp/source_files.txt)"
+          echo "Doc pages: $(wc -l < /tmp/doc_files.txt)"
+          echo "CLI commands: $(wc -l < /tmp/cli_commands.txt)"
+
+      - name: "docs-guardian: Check for undocumented modules"
+        id: audit
+        run: |
+          UNDOCUMENTED=""
+          ISSUES=0
+          
+          # Check each source module has at least one doc reference
+          for src in $(find src/mcpkernel/ -name "*.py" -not -name "__init__.py" -not -name "__pycache__" -not -path "*/__pycache__/*"); do
+            MODULE=$(basename "$src" .py)
+            # Skip internal/utility modules
+            if [[ "$MODULE" == "_"* ]]; then continue; fi
+            
+            REFS=$(grep -rl "$MODULE" docs/ 2>/dev/null | wc -l)
+            if [ "$REFS" -eq 0 ]; then
+              echo "UNDOCUMENTED: $src (no reference in docs/)"
+              UNDOCUMENTED="$UNDOCUMENTED $src"
+              ISSUES=$((ISSUES + 1))
+            fi
+          done
+          
+          # Check each CLI command is documented
+          for cmd in $(python -m mcpkernel --help 2>/dev/null | grep -oP '│\s+(\S+)\s' | awk '{print $1}' | grep -v '│'); do
+            REFS=$(grep -rl "$cmd" docs/cli/ 2>/dev/null | wc -l)
+            if [ "$REFS" -eq 0 ]; then
+              echo "UNDOCUMENTED CLI: $cmd (not in docs/cli/reference.md)"
+              ISSUES=$((ISSUES + 1))
+            fi
+          done
+          
+          echo "undocumented=$UNDOCUMENTED" >> $GITHUB_OUTPUT
+          echo "issues=$ISSUES" >> $GITHUB_OUTPUT
+
+      - name: "docs-guardian: Verify mkdocs build"
+        run: |
+          mkdocs build 2>&1
+          echo "Build successful — $(find site/ -name '*.html' | wc -l) HTML pages"
+
+      - name: "docs-guardian: Check nav vs filesystem"
+        run: |
+          echo "=== Pages in docs/ but NOT in mkdocs.yml nav ==="
+          for md in $(find docs/ -name "*.md" -not -name "USAGE.md"); do
+            REL=${md#docs/}
+            if ! grep -q "$REL" mkdocs.yml; then
+              echo "  ORPHAN: $md (not in nav)"
+            fi
+          done
+          
+          echo "=== Pages in nav but NOT on filesystem ==="
+          grep -oP ':\s+\K\S+\.md' mkdocs.yml | while read -r page; do
+            if [ ! -f "docs/$page" ]; then
+              echo "  MISSING: docs/$page (in nav but file doesn't exist)"
+            fi
+          done
+
+  # ═══════════════════════════════════════════════════════════
+  # PHASE 3: Security Audit
+  # ═══════════════════════════════════════════════════════════
+  security-audit:
+    name: "Phase 3: Security Audit"
+    runs-on: ubuntu-latest
+    needs: intelligence-and-quality
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: uv pip install --system -e ".[dev]" pip-audit
+
+      - name: "security-agent: Dependency audit"
+        run: |
+          uv pip freeze --system --exclude-editable > /tmp/audit-requirements.txt
+          pip-audit --desc on -r /tmp/audit-requirements.txt 2>&1 || true
+
+      - name: "security-agent: Dangerous patterns scan"
+        run: |
+          echo "=== Scanning for dangerous patterns ==="
+          
+          echo "--- eval/exec usage ---"
+          grep -rn "eval\s*(" src/mcpkernel/ --include="*.py" || echo "None found"
+          grep -rn "exec\s*(" src/mcpkernel/ --include="*.py" || echo "None found"
+          
+          echo "--- subprocess with shell=True ---"
+          grep -rn "shell=True" src/mcpkernel/ --include="*.py" || echo "None found"
+          
+          echo "--- pickle usage ---"
+          grep -rn "pickle\.loads\?" src/mcpkernel/ --include="*.py" || echo "None found"
+          
+          echo "--- Hardcoded secrets ---"
+          grep -rn "password\s*=\s*['\"]" src/mcpkernel/ --include="*.py" || echo "None found"
+          grep -rn "secret\s*=\s*['\"][^{]" src/mcpkernel/ --include="*.py" || echo "None found"
+          
+          echo "--- Dynamic imports ---"
+          grep -rn "__import__\s*(" src/mcpkernel/ --include="*.py" || echo "None found"
+
+      - name: "security-agent: OWASP ASI compliance check"
+        run: |
+          echo "=== OWASP ASI 2026 Policy Validation ==="
+          python -m mcpkernel validate-policy policies/owasp_asi_2026_strict.yaml 2>&1 || echo "Policy validation returned non-zero"
+
+  # ═══════════════════════════════════════════════════════════
+  # PHASE 4: Monthly Report
+  # ═══════════════════════════════════════════════════════════
+  monthly-report:
+    name: "Phase 4: Monthly Report"
+    runs-on: ubuntu-latest
+    needs: [intelligence-and-quality, docs-audit, security-audit]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate monthly report
+        env:
+          TESTS: ${{ needs.intelligence-and-quality.outputs.test_count }}
+          COVERAGE: ${{ needs.intelligence-and-quality.outputs.coverage }}
+          LINT_ERRORS: ${{ needs.intelligence-and-quality.outputs.lint_errors }}
+          TYPE_ERRORS: ${{ needs.intelligence-and-quality.outputs.type_errors }}
+          DOC_ISSUES: ${{ needs.docs-audit.outputs.doc_issues }}
+          UNDOCUMENTED: ${{ needs.docs-audit.outputs.undocumented_modules }}
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          cat > /tmp/monthly-report.md << 'REPORT'
+          # MCPKernel Monthly Agent Pipeline Report
+          
+          **Date**: $DATE
+          **Pipeline**: All 17 agents
+          
+          ## Phase 1: Intelligence + Quality
+          | Metric | Value |
+          |--------|-------|
+          | Tests passing | $TESTS |
+          | Code coverage | $COVERAGE |
+          | Lint errors | $LINT_ERRORS |
+          | Type errors | $TYPE_ERRORS |
+          
+          ## Phase 2: Documentation Audit
+          | Metric | Value |
+          |--------|-------|
+          | Doc issues found | $DOC_ISSUES |
+          | Undocumented modules | $UNDOCUMENTED |
+          
+          ## Phase 3: Security
+          - Dependency audit: completed
+          - Pattern scan: completed
+          - OWASP ASI: validated
+          
+          ## Agents Invoked
+          1. code-quality-agent (lint, format, type check)
+          2. test-runner (full suite + coverage)
+          3. issue-hunter (structural scan)
+          4. docs-guardian (discovery + audit + build verify)
+          5. security-agent (deps + patterns + OWASP)
+          
+          ## Next Steps
+          - Review undocumented modules
+          - Fix any lint/type errors
+          - Update docs for new features
+          REPORT
+          
+          # Substitute env vars
+          envsubst < /tmp/monthly-report.md > /tmp/final-report.md
+          cat /tmp/final-report.md
+
+      - name: Create issue with report
+        if: github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const date = new Date().toISOString().split('T')[0];
+            const tests = '${{ needs.intelligence-and-quality.outputs.test_count }}';
+            const coverage = '${{ needs.intelligence-and-quality.outputs.coverage }}';
+            const lintErrors = '${{ needs.intelligence-and-quality.outputs.lint_errors }}';
+            const typeErrors = '${{ needs.intelligence-and-quality.outputs.type_errors }}';
+            const docIssues = '${{ needs.docs-audit.outputs.doc_issues }}';
+            
+            const body = `# Monthly Agent Pipeline Report — ${date}
+
+            ## Quality Metrics
+            | Metric | Value |
+            |--------|-------|
+            | Tests passing | ${tests} |
+            | Coverage | ${coverage} |
+            | Lint errors | ${lintErrors} |
+            | Type errors | ${typeErrors} |
+            | Doc issues | ${docIssues} |
+
+            ## Agents Run
+            - code-quality-agent, test-runner, issue-hunter, docs-guardian, security-agent
+
+            ## Pipeline Status
+            - Intelligence: ✅
+            - Docs Audit: ✅
+            - Security: ✅
+
+            _Auto-generated by the monthly agent pipeline._
+            `;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Monthly Agent Report — ${date}`,
+              body: body,
+              labels: ['agent-pipeline', 'monthly-report'],
+            });

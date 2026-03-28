@@ -28,18 +28,32 @@ theme:
     text: Inter
     code: JetBrains Mono
   features:
-    - navigation.tabs
     - navigation.sections
     - navigation.expand
     - navigation.top
     - navigation.indexes
+    - navigation.path
     - search.highlight
     - search.suggest
     - content.code.copy
+    - content.code.annotate
     - content.tabs.link
     - toc.follow
   icon:
     repo: fontawesome/brands/github
+    admonition:
+      note: fontawesome/solid/note-sticky
+      abstract: fontawesome/solid/book
+      info: fontawesome/solid/circle-info
+      tip: fontawesome/solid/lightbulb
+      success: fontawesome/solid/check
+      question: fontawesome/solid/circle-question
+      warning: fontawesome/solid/triangle-exclamation
+      failure: fontawesome/solid/bomb
+      danger: fontawesome/solid/skull
+      bug: fontawesome/solid/robot
+      example: fontawesome/solid/flask
+      quote: fontawesome/solid/quote-left
 
 plugins:
   - search
@@ -80,6 +94,7 @@ nav:
     - Taint Tracking: core/taint-tracking.md
     - Sandbox Execution: core/sandbox.md
     - Deterministic Envelopes: core/dee.md
+    - Audit & Logging: core/audit.md
   - Trust Framework:
     - Causal Trust Graph: trust/causal-trust-graph.md
     - Trust Decay: trust/trust-decay.md
@@ -93,6 +108,14 @@ nav:
   - Integrations:
     - IDE Setup: integrations/ide-setup.md
     - Framework Examples: integrations/frameworks.md
+    - MCP Server Registry: integrations/registry.md
+  - Examples:
+    - Basic Usage: examples/basic.md
+    - Policy Rules: examples/policies.md
+    - Taint Detection: examples/taint.md
+    - Trust Graph: examples/trust-graph.md
+    - Security Pipeline: examples/security-pipeline.md
+    - End-to-End: examples/end-to-end.md
   - CLI Reference: cli/reference.md
   - API Reference: api/reference.md
   - Troubleshooting: troubleshooting.md

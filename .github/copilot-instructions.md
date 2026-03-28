@@ -59,31 +59,44 @@ mypy src/mcpkernel/
 
 ## Key Files
 - `README.md` — Project overview and quick start
-- `docs/USAGE.md` — Detailed usage guide
+- `mkdocs.yml` — MkDocs Material documentation site config
+- `docs/` — Tutorial-style documentation (25+ pages, deployed to GitHub Pages)
 - `CHANGELOG.md` — Version history
 - `CONTRIBUTING.md` — Contribution guidelines
 - `pyproject.toml` — Project metadata and dependencies
 - `policies/` — Example YAML policy files
 - `src/mcpkernel/agent_manifest/` — Agent manifest loader, policy bridge, tool validator, hooks
 
+## Documentation Site
+- **Live**: https://piyushptiwari1.github.io/mcpkernel/
+- **Source**: `docs/` + `mkdocs.yml`
+- **Build**: `mkdocs build`
+- **Auto-deploy**: `.github/workflows/docs.yml` on push to main
+
 ## Agent Team Guidelines
 - When making changes, always run `python -m pytest tests/ -v --tb=short` to validate
 - When fixing issues, create a test that reproduces the bug first
 - When adding features, add corresponding tests
-- Update `README.md` and `docs/USAGE.md` when public APIs change
+- Update `README.md` and `docs/` pages when public APIs change
 - Track all work through GitHub Issues with appropriate labels
 
-## Agent System Overview (16 agents — internal tooling only, not shipped)
+## Agent System Overview (17 agents — internal tooling only, not shipped)
 - **Control**: team-lead (orchestrator), planner (spec writer)
 - **Intelligence**: issue-hunter (external + internal structural scan), repo-scout, researcher, use-case-scout, contributor-booster
 - **Execution**: code-improver, test-writer, test-runner
 - **Quality**: code-quality-agent (lint, type check, format, coverage, compatibility — NEW Sprint 2)
 - **Validation**: security-agent (hard gate), reviewer (hard gate)
-- **Support**: docs-updater, branch-manager (PR-only, never merges to main)
+- **Support**: docs-updater, docs-guardian (verifies docs against code), branch-manager (PR-only, never merges to main)
 - **Meta**: agent-architect (proposal-only, read-only — now detects quality blind spots)
-- Execution chain: `code-improver → test-writer → test-runner → code-quality-agent → security-agent → reviewer → docs-updater → branch-manager`
+- Execution chain: `code-improver → test-writer → test-runner → code-quality-agent → security-agent → reviewer → docs-updater → docs-guardian → branch-manager`
 - Destructive operations (file/function deletion) emit `⚠️ DESTRUCTIVE` tag and halt pipeline for human review
 - `pyproject.toml` auto-grant exception: if test-runner fails with `ModuleNotFoundError`, code-improver may add the missing dependency without human gate
 - Sequence lock: docs-updater always finishes before contributor-booster touches README.md
 - Agent definitions live in `.github/agents/` (gitignored)
 - Project board at `.agent-workspace/board.json` (gitignored)
+- Monthly pipeline: `.github/workflows/monthly-agents.yml` runs all agents on 1st of each month
+  - Phase 1: code-quality-agent + test-runner + issue-hunter (quality + structural scan)
+  - Phase 2: docs-guardian (dynamic discovery + audit + build verify)
+  - Phase 3: security-agent (deps + patterns + OWASP)
+  - Phase 4: Auto-generated GitHub Issue with monthly report
+  - Can also be triggered manually via `workflow_dispatch`

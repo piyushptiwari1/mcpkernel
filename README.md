@@ -9,6 +9,9 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://python.org)
 [![Downloads](https://img.shields.io/pypi/dm/mcpkernel.svg)](https://pypi.org/project/mcpkernel/)
+[![Docs](https://img.shields.io/badge/docs-live-brightgreen.svg)](https://piyushptiwari1.github.io/mcpkernel/)
+
+> **[Read the full documentation →](https://piyushptiwari1.github.io/mcpkernel/)**
 
 ---
 
@@ -849,3 +852,11 @@ Not sure where to start? Look for issues labeled **`good first issue`** or **`he
 ## License
 
 Apache 2.0 — see [LICENSE](LICENSE).
+
+---
+
+## Documentation
+
+Full tutorial-style documentation with examples, API reference, and guides:
+
+**[https://piyushptiwari1.github.io/mcpkernel/](https://piyushptiwari1.github.io/mcpkernel/)**

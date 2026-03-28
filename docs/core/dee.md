@@ -51,12 +51,25 @@ Output:
 ### Export traces
 
 ```bash
-# Export to JSON
-mcpkernel trace-export --db .mcpkernel/traces.db --format json --output traces.json
-
-# Export to CSV
-mcpkernel trace-export --db .mcpkernel/traces.db --format csv --output traces.csv
+# Export a specific trace as JSON
+mcpkernel trace-export a1b2c3d4e5f6 --db .mcpkernel/traces.db
 ```
+
+Output:
+
+```json
+{
+  "trace_id": "a1b2c3d4e5f6",
+  "tool_name": "read_file",
+  "input_hash": "8f3a2b1c...",
+  "output_hash": "d4e5f6a7...",
+  "duration_seconds": 0.023,
+  "timestamp": "2026-03-28T14:30:00Z"
+}
+```
+
+!!! tip "Redirect to file"
+    Use shell redirection to save: `mcpkernel trace-export <id> > trace.json`
 
 ---
 

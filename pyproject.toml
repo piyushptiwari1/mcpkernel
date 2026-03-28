@@ -94,7 +94,7 @@ docs = [
 
 [project.urls]
 Homepage = "https://github.com/piyushptiwari1/mcpkernel"
-Documentation = "https://github.com/piyushptiwari1/mcpkernel/tree/main/docs"
+Documentation = "https://piyushptiwari1.github.io/mcpkernel/"
 Repository = "https://github.com/piyushptiwari1/mcpkernel"
 Issues = "https://github.com/piyushptiwari1/mcpkernel/issues"
 Changelog = "https://github.com/piyushptiwari1/mcpkernel/blob/main/CHANGELOG.md"

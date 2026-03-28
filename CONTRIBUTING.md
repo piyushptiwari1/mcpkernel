@@ -92,3 +92,14 @@ What are the trade-offs?
 ## Code of Conduct
 
 Be respectful, constructive, and inclusive. We follow the [Contributor Covenant](https://www.contributor-covenant.org/version/2/1/code_of_conduct/).
+
+## Documentation
+
+MCPKernel uses [MkDocs Material](https://squidfunk.github.io/mkdocs-material/) for documentation, hosted on GitHub Pages.
+
+- **Live site**: [https://piyushptiwari1.github.io/mcpkernel/](https://piyushptiwari1.github.io/mcpkernel/)
+- **Source**: `docs/` directory + `mkdocs.yml`
+- **Local preview**: `mkdocs serve` (opens at http://127.0.0.1:8000)
+- **Auto-deploy**: Pushes to `main` that change `docs/**` or `mkdocs.yml` trigger automatic deployment
+
+When changing public APIs, update the corresponding docs page in `docs/`.

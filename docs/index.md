@@ -4,6 +4,8 @@
 
 MCPKernel sits between your AI agent (Claude Desktop, Cursor, VS Code, Windsurf) and MCP tool servers. Every tool call flows through a security pipeline: policy check → taint scan → sandbox → audit log → deterministic envelope.
 
+[:material-github: GitHub](https://github.com/piyushptiwari1/mcpkernel){ .md-button } [:material-package: PyPI](https://pypi.org/project/mcpkernel/){ .md-button .md-button--primary }
+
 ---
 
 ## What Problems Does MCPKernel Solve?
