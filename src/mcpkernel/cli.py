@@ -959,14 +959,14 @@ def poison_scan(
         raise typer.Exit(code=1) from exc
 
     # Extract tools from config
-    tools: list[dict[str, Any]] = []
+    file_tools: list[dict[str, Any]] = []
     servers = data.get("mcpServers", data.get("servers", data.get("mcp", {}).get("servers", {})))
     if isinstance(servers, dict):
         for name, cfg in servers.items():
             desc = cfg.get("description", f"MCP server: {cfg.get('command', '')} {' '.join(cfg.get('args', []))}")
-            tools.append({"name": name, "description": desc})
+            file_tools.append({"name": name, "description": desc})
 
-    report = scan_tool_descriptions(tools, server_name=str(target.name))
+    report = scan_tool_descriptions(file_tools, server_name=str(target.name))
 
     if json_output:
         typer.echo(

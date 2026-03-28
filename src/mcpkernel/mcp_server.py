@@ -180,7 +180,7 @@ async def _handle_validate_policy(args: dict[str, Any]) -> dict[str, Any]:
     """Validate a YAML policy file."""
     from pathlib import Path
 
-    from mcpkernel.policy.loader import load_policy
+    from mcpkernel.policy.loader import load_policy_file
 
     policy_path = Path(args["policy_path"])
     if not policy_path.exists():
@@ -190,7 +190,7 @@ async def _handle_validate_policy(args: dict[str, Any]) -> dict[str, Any]:
         }
 
     try:
-        rules = load_policy(policy_path)
+        rules = load_policy_file(policy_path)
         text = f"Policy valid: {len(rules)} rule(s) loaded from {policy_path.name}"
     except Exception as exc:
         text = f"Policy validation failed: {exc}"

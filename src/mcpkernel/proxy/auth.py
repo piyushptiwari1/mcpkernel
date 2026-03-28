@@ -249,7 +249,7 @@ class MTLSAuth(AuthBackend):
 
         cn_attrs = client_cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
         if cn_attrs:
-            return cn_attrs[0].value
+            return str(cn_attrs[0].value)
         return str(client_cert.subject)
 
     async def authenticate(self, headers: dict[str, str]) -> AuthCredentials:
