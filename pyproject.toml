@@ -79,6 +79,7 @@ dev = [
     "pytest>=8.2",
     "pytest-asyncio>=0.23",
     "pytest-cov>=5.0",
+    "pytest-timeout>=2.3",
     "hypothesis>=6.100",
     "ruff>=0.5",
     "mypy>=1.10",
@@ -145,6 +146,7 @@ follow_imports = "skip"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+timeout = 120
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "ebpf: requires eBPF/root (deselect with '-m \"not ebpf\"')",
