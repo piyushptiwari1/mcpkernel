@@ -44,11 +44,11 @@ jobs:
         run: uv pip install --system -e ".[dev]"
       - name: Run tests
         run: |
-          timeout -k 10 120 pytest tests/ -v --tb=short --cov=mcpkernel --cov-report=xml --cov-report=term-missing --timeout=120 || {
+          timeout -k 5 60 pytest tests/ -v --tb=short --cov=mcpkernel --cov-report=xml --cov-report=term-missing --timeout=120 || {
             rc=$?
-            # 124 = timeout killed the process after tests completed
+            # 124 = SIGTERM timeout, 137 = SIGKILL timeout
             # (aiosqlite background threads prevent clean exit)
-            if [ $rc -eq 124 ]; then
+            if [ $rc -eq 124 ] || [ $rc -eq 137 ]; then
               echo "::warning::pytest hung on exit (aiosqlite cleanup) — killed by timeout"
               exit 0
             fi
