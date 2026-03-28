@@ -44,7 +44,7 @@ jobs:
         run: uv pip install --system -e ".[dev]"
       - name: Run tests
         run: |
-          timeout 600 pytest tests/ -v --tb=short --cov=mcpkernel --cov-report=xml --cov-report=term-missing --timeout=120
+          timeout -k 30 300 pytest tests/ -v --tb=short --cov=mcpkernel --cov-report=xml --cov-report=term-missing --timeout=120
       - name: Upload coverage
         if: matrix.python-version == '3.13'
         uses: actions/upload-artifact@v4

@@ -195,14 +195,18 @@ class TestCLITransport:
 
     def test_serve_has_transport_option(self):
         """The serve command accepts --transport."""
+        import re
+
         from typer.testing import CliRunner
 
         from mcpkernel.cli import app
 
         runner = CliRunner()
         result = runner.invoke(app, ["serve", "--help"])
-        assert "--transport" in result.output
-        assert "http" in result.output or "stdio" in result.output
+        # Strip ANSI escape sequences before checking
+        clean = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+        assert "--transport" in clean
+        assert "http" in clean or "stdio" in clean
 
 
 # ---------------------------------------------------------------------------
