@@ -81,10 +81,40 @@ class OAuth2Auth(AuthBackend):
         jwks_url: str,
         issuer: str | None = None,
         audience: str | None = None,
+        *,
+        resource: str | None = None,
+        require_resource: bool = False,
     ) -> None:
+        """Configure OAuth2 / JWT validation.
+
+        Parameters
+        ----------
+        jwks_url:
+            JWKS endpoint to fetch signing keys from.
+        issuer:
+            Optional expected ``iss`` claim. Recommended.
+        audience:
+            Optional expected ``aud`` claim. Recommended. When ``audience``
+            is set but ``resource`` is not, the audience is also used as the
+            canonical resource URI for RFC 8707 verification.
+        resource:
+            Canonical resource URI (RFC 8707 / MCP 2025-11-25) this proxy
+            represents. When set, the JWT's ``aud`` claim MUST match this
+            URI (or contain it, for list-shaped audiences). Set this to
+            your MCP server's canonical URL — e.g.
+            ``"https://mcp.example.com/"``.
+        require_resource:
+            If True, reject any token whose ``aud`` does not match
+            ``resource`` (RFC 8707 strict mode). Default False for backwards
+            compatibility — flip to True for MCP 2025-11-25 conformance.
+        """
         self._jwks_url = jwks_url
         self._issuer = issuer
-        self._audience = audience
+        # If a resource was given and no explicit audience, treat the resource
+        # URI as the expected audience — that's the RFC 8707 convention.
+        self._audience = audience or resource
+        self._resource = resource
+        self._require_resource = require_resource
 
     def _get_cached_jwks(self) -> dict[str, Any] | None:
         entry = self._jwks_cache.get(self._jwks_url)
@@ -157,6 +187,35 @@ class OAuth2Auth(AuthBackend):
             raise AuthError("Invalid token issuer") from exc
         except jwt.InvalidTokenError as exc:
             raise AuthError(f"Invalid JWT: {exc}") from exc
+
+        # ── RFC 8707 / MCP 2025-11-25 resource-indicator enforcement ──────
+        # The MCP spec (§Authorization) requires that tokens issued for one
+        # MCP server are not accepted by another. We verify the ``aud``
+        # claim names *this* resource URI explicitly — defeating confused-
+        # deputy and cross-resource token replay.
+        if self._resource:
+            aud_claim = payload.get("aud")
+            audiences: list[str]
+            if isinstance(aud_claim, str):
+                audiences = [aud_claim]
+            elif isinstance(aud_claim, list):
+                audiences = [str(a) for a in aud_claim]
+            else:
+                audiences = []
+
+            if self._resource not in audiences:
+                if self._require_resource:
+                    raise AuthError(
+                        "Token audience does not match this resource "
+                        f"({self._resource!r}); refusing per RFC 8707."
+                    )
+                logger.warning(
+                    "oauth2_resource_indicator_mismatch",
+                    expected=self._resource,
+                    received=audiences,
+                    note="MCP 2025-11-25 requires resource indicator. "
+                    "Set require_resource=True to enforce.",
+                )
 
         # Extract identity and scopes from standard claims
         subject = payload.get("sub", "unknown")

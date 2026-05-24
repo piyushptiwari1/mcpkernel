@@ -53,7 +53,7 @@ def _severity_to_sarif_level(severity: str) -> str:
 def generate_sarif(
     results: list[SARIFResult],
     tool_name: str = "mcpkernel",
-    tool_version: str = "0.1.3",
+    tool_version: str | None = None,
     *,
     rules: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
@@ -119,6 +119,19 @@ def generate_sarif(
             ]
 
         sarif_results.append(result_obj)
+
+    # Resolve tool version dynamically if not explicitly provided
+    if tool_version is None:
+        try:
+            from importlib.metadata import PackageNotFoundError
+            from importlib.metadata import version as _pkg_version
+
+            try:
+                tool_version = _pkg_version("mcpkernel")
+            except PackageNotFoundError:
+                tool_version = "0.0.0+local"
+        except Exception:  # pragma: no cover - defensive
+            tool_version = "0.0.0+local"
 
     sarif_doc: dict[str, Any] = {
         "$schema": _SARIF_SCHEMA,

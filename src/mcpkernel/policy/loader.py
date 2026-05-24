@@ -83,6 +83,7 @@ def _parse_rule(raw: dict[str, Any], source: str) -> PolicyRule | None:
         argument_patterns=raw.get("argument_patterns", {}),
         taint_labels=raw.get("taint_labels", []),
         owasp_asi_id=raw.get("owasp_asi_id", ""),
+        owasp_llm_id=raw.get("owasp_llm_id", ""),
         conditions=raw.get("conditions", {}),
         enabled=raw.get("enabled", True),
     )

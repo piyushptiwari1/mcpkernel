@@ -332,7 +332,7 @@ observability:
 Export audit logs to your SIEM:
 
 ```bash
-mcpkernel audit-query --format cef > siem_export.log
+mcpkernel audit-query --export-format cef > siem_export.log
 mcpkernel audit-verify  # verify tamper-proof chain
 ```
 
@@ -409,7 +409,7 @@ MCPKernel reads your `agent.yaml` and auto-generates policy rules for:
 Append-only audit logs with integrity verification provide the evidence trail regulators require:
 
 ```bash
-mcpkernel audit-query --event-type policy_violation --format cef
+mcpkernel audit-query --event-type policy_violation --export-format cef
 mcpkernel audit-verify
 ```
 

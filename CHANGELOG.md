@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — v0.2.0 advances
+
+### Added
+- **Toxic Flow Analyzer** (`mcpkernel.taint.ToxicFlowAnalyzer`) — static
+  "lethal trifecta" detection over MCP tool manifests. Enumerates every
+  (untrusted-input, sensitive-data, exfil-sink) triple before runtime and
+  exports findings as SARIF 2.1.0 for GitHub code-scanning, Defender, Snyk.
+  Inspired by Invariant Labs' Toxic Flow Analysis and Simon Willison's
+  "lethal trifecta" — see [`docs/security/toxic-flow.md`](docs/security/toxic-flow.md).
+- **SARIF 2.1.0 audit-export format** — `mcpkernel audit-query --export-format sarif`.
+  Maps `blocked`/`denied` outcomes to SARIF `error`, `warned` to `warning`,
+  the rest to `note`. Drop-in for GitHub Advanced Security ingestion.
+- **OpenTelemetry GenAI semantic conventions** (`mcpkernel.observability.semconv`) —
+  constants and helpers for `gen_ai.*` and `mcp.*` span/metric attributes
+  per the upstream OTel GenAI semconv (2025).
+- **RFC 8707 resource-indicator enforcement** in `OAuth2Auth` — new
+  `resource=` / `require_resource=` kwargs reject tokens whose `aud`
+  claim doesn't match this MCP server's canonical URI, per MCP 2025-11-25
+  §Authorization. Defeats cross-resource token replay / confused-deputy.
+- **`OWASP LLM Top 10 (2025)` policy preset** (`policies/owasp_llm_top10_2025.yaml`)
+  with mappings for LLM01–LLM10. `PolicyRule` now carries an additional
+  `owasp_llm_id` field (alongside the existing `owasp_asi_id`).
+
+### Changed
+- `SessionGuard` no longer falls back to a hard-coded default secret. When
+  no `secret=` is provided it now generates a per-process random key via
+  `secrets.token_bytes(32)` and emits a warning. Sessions will not survive
+  a process restart, which is the safe default. **Security fix.**
+- `__version__` is now resolved from `importlib.metadata.version("mcpkernel")`
+  at import time, falling back to `"0.0.0+local"` when running from a
+  source tree. The package version is now single-sourced in `pyproject.toml`.
+- `generate_sarif()` reads its `tool_version` from package metadata when
+  no explicit version is passed.
+
+### Fixed
+- README and `docs/core/audit.md` referenced a non-existent
+  `audit-query --format` flag; corrected to `--export-format`.
+
 ## [0.2.0] — 2026-03-28
 
 ### Added
