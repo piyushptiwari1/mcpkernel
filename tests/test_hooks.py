@@ -104,6 +104,50 @@ class TestTaintHook:
         await hook.post_execution(ctx)
         assert "taint_summary" in ctx.extra
 
+    @pytest.mark.asyncio
+    async def test_post_execution_taints_structured_content(self):
+        """C.2: structuredContent from upstream tool must be scanned for taint."""
+        from mcpkernel.taint.sources import detect_tainted_sources
+
+        tracker = TaintTracker()
+        hook = TaintHook(tracker, detect_fn=detect_tainted_sources)
+        ctx = _make_ctx()
+        ctx.result = ExecutionResult(
+            content=[{"type": "text", "text": "see structured payload"}],
+            structured_content={"user": {"email": "victim@example.com"}},
+        )
+        await hook.post_execution(ctx)
+        assert any("pii" in label or "email" in label.lower() for label in ctx.taint_labels) or ctx.taint_labels
+
+    @pytest.mark.asyncio
+    async def test_post_execution_taints_text_content(self):
+        """C.2: text content parts from upstream tool must be scanned for taint."""
+        from mcpkernel.taint.sources import detect_tainted_sources
+
+        tracker = TaintTracker()
+        hook = TaintHook(tracker, detect_fn=detect_tainted_sources)
+        ctx = _make_ctx()
+        ctx.result = ExecutionResult(
+            content=[{"type": "text", "text": "leaked AKIAIOSFODNN7EXAMPLE1234"}],
+        )
+        await hook.post_execution(ctx)
+        assert len(ctx.taint_labels) > 0
+
+    @pytest.mark.asyncio
+    async def test_post_execution_taints_elicitation_response(self):
+        """C.1: elicitation responses are USER_INPUT taint sources."""
+        from mcpkernel.taint.tracker import TaintLabel
+
+        tracker = TaintTracker()
+        hook = TaintHook(tracker)
+        ctx = _make_ctx()
+        ctx.result = ExecutionResult(content=[])
+        ctx.extra["elicitation_response"] = {"answer": "drop table users"}
+        await hook.post_execution(ctx)
+        assert TaintLabel.USER_INPUT.value in ctx.taint_labels
+        tainted = tracker.get_by_label(TaintLabel.USER_INPUT)
+        assert any(tv.value == "drop table users" for tv in tainted)
+
 
 # ---------------------------------------------------------------------------
 # Pipeline Integration

@@ -8,6 +8,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] — v0.2.0 advances
 
 ### Added
+- **DSSE / in-toto v1 audit-batch attestation** (`mcpkernel.audit.attest_audit_batch`) —
+  rolls a batch of `AuditEntry` records into an in-toto v1 Statement
+  (predicate type `https://mcpkernel.dev/attestations/audit-batch/v1`),
+  wraps it in a DSSE envelope (`application/vnd.in-toto+json`), and
+  Sigstore-signs the PAE. Drop-in for SLSA / Rekor archival.
+- **Sigstore Bundle v0.3 enforcement** — `_sign_trace()` now asserts
+  `mediaType` contains `bundle.v0.3`. Under `MCPKERNEL_DEE__REQUIRE_SIGN`
+  any other format is rejected.
+- **Taint scanning of tool results** — `TaintHook.post_execution` now scans
+  both `content` and `structuredContent` returned by upstream MCP tools for
+  secret/PII patterns and labels them so downstream policy/DEE/audit see
+  the same taint as request-side detections.
+- **Elicitation responses tainted as `USER_INPUT`** — when proxy code
+  stashes the reply to `elicitation/create` on
+  `ctx.extra["elicitation_response"]`, every string value (recursively) is
+  marked `TaintLabel.USER_INPUT`, so user-supplied answers can't slip into
+  exfil sinks unnoticed.
+
+### Changed
+- **BREAKING:** `OAuth2Auth(require_resource=...)` now defaults to `True`
+  (MCP 2025-11-25 mandates RFC 8707 resource-indicator enforcement).
+  Callers that supplied a `resource=` URI but relied on the old permissive
+  default must either set `require_resource=False` explicitly, or — better —
+  start minting audience-scoped tokens. Existing callers that did not set
+  `resource=` are unaffected (the check is skipped when no resource URI is
+  configured).
+
+### Added
 - **Toxic Flow Analyzer** (`mcpkernel.taint.ToxicFlowAnalyzer`) — static
   "lethal trifecta" detection over MCP tool manifests. Enumerates every
   (untrusted-input, sensitive-data, exfil-sink) triple before runtime and
