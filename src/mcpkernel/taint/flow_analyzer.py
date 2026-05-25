@@ -32,10 +32,6 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
-from mcpkernel.utils import get_logger
-
-logger = get_logger(__name__)
-
 __all__ = [
     "FlowCategory",
     "FlowFinding",

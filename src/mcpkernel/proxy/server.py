@@ -667,8 +667,12 @@ def create_proxy_app(settings: MCPKernelSettings | None = None) -> FastAPI:
                 }
                 creds: AuthCredentials = await _auth_backend.authenticate(headers)
             except AuthError as exc:
+                # Log full details server-side but return a generic message
+                # to the client to avoid leaking auth-backend internals
+                # (CodeQL py/stack-trace-exposure).
+                logger.warning("authentication failed", error=str(exc))
                 return JSONResponse(
-                    build_jsonrpc_error(raw.get("id", 0), -32001, str(exc)),
+                    build_jsonrpc_error(raw.get("id", 0), -32001, "Authentication failed"),
                     status_code=401,
                 )
         else:

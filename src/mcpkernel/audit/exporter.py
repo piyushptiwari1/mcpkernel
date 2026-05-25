@@ -35,6 +35,8 @@ def export_audit_logs(
             return _export_cef(entries)
         case AuditExportFormat.SARIF:
             return _export_sarif(entries)
+        case _:
+            raise ValueError(f"Unsupported audit export format: {format}")
 
 
 def _export_jsonl(entries: list[AuditEntry]) -> str:

@@ -51,7 +51,7 @@ class TaintPropagator:
         input_labels: set[TaintLabel] = set()
 
         for det in detections:
-            tv = self._tracker.mark(
+            self._tracker.mark(
                 data=det.matched_text,
                 label=det.label,
                 metadata={"tool": tool_name, "field": det.field_path, "pattern": det.pattern_name},

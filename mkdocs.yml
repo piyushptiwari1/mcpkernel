@@ -123,4 +123,6 @@ nav:
   - API Reference: api/reference.md
   - Contributing:
     - Reproducible Builds: contributing/reproducible-builds.md
+  - Roadmap:
+    - v0.4: roadmap/v0.4.md
   - Troubleshooting: troubleshooting.md
