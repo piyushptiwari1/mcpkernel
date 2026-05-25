@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mcpkernel.fullname" . }}-policies
+  labels:
+    {{- include "mcpkernel.labels" . | nindent 4 }}
+data:
+  {{- if .Values.policies }}
+  {{- range $name, $content := .Values.policies }}
+  {{ $name }}: |
+{{ $content | indent 4 }}
+  {{- end }}
+  {{- else }}
+  empty.yaml: |
+    rules: []
+  {{- end }}

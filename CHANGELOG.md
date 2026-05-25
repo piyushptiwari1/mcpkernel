@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] — v0.2.0 advances
 
 ### Added
+- **`mcpkernel policy-lint` subcommand** — static analysis over policy
+  rule sets. Codes PL001–PL007 cover duplicate IDs (error), unmatchable
+  rules (warn), invalid tool patterns (error), ReDoS-prone regexes
+  (warn), catch-all patterns (warn), missing OWASP mappings on deny
+  rules (info), and unreachable / shadowed deny rules (warn). `--strict`
+  exits 1 on warnings.
+- **Grafana dashboard** (`deploy/grafana/mcpkernel-overview.json`) —
+  importable dashboard wired to every `mcpkernel_*` Prometheus metric:
+  tool throughput, latency p50/p95/p99, policy verdicts, taint
+  detections, sandbox health, audit volume, rate-limit hits, top
+  denied tools.
+- **Helm chart** (`deploy/helm/mcpkernel/`) — production-ready chart
+  with HPA, ServiceMonitor, Ingress, NetworkPolicy, hardened
+  `securityContext` (non-root, read-only fs, drop ALL caps), policies
+  ConfigMap, `existingSecret` support for health and Sigstore tokens.
 - **DSSE / in-toto v1 audit-batch attestation** (`mcpkernel.audit.attest_audit_batch`) —
   rolls a batch of `AuditEntry` records into an in-toto v1 Statement
   (predicate type `https://mcpkernel.dev/attestations/audit-batch/v1`),

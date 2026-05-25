@@ -1,0 +1,120 @@
+# Default values for mcpkernel chart.
+
+image:
+  repository: ghcr.io/piyushptiwari1/mcpkernel
+  tag: ""  # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+replicaCount: 2
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: mcpkernel.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 75
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# ── MCPKernel configuration ─────────────────────────────────────────
+# These map directly to MCPKERNEL_* environment variables consumed by
+# pydantic-settings. Anything you put in `config.env` is rendered into
+# the deployment as `env:` entries verbatim.
+config:
+  logLevel: info
+  policy:
+    hotReload: true
+    paths:
+      - /etc/mcpkernel/policies/
+  dee:
+    requireSign: false
+  health:
+    # If set, /health/secret is HMAC-gated by this token. Use existingSecret
+    # in production rather than inlining the value.
+    token: ""
+  env: []
+    # - name: MCPKERNEL_UPSTREAM__URL
+    #   value: http://my-mcp-server:9000
+
+# Reference an existing Secret rather than putting tokens in values.yaml.
+# Keys: health-token, sigstore-id-token (optional).
+existingSecret: ""
+
+# Policy files are loaded from a ConfigMap mounted at
+# /etc/mcpkernel/policies. Put policy YAML files here.
+policies: {}
+  # owasp_asi_2026_strict.yaml: |
+  #   rules:
+  #     - id: ASI-01-block-shell
+  #       action: deny
+  #       tool_patterns: ["shell_.*"]
+  #       owasp_asi_id: ASI-01
+
+# Optional sidecars (e.g., a sandbox runtime, fluent-bit shipper).
+extraVolumes: []
+extraVolumeMounts: []
+extraContainers: []
+
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  labels: {}
+
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []
