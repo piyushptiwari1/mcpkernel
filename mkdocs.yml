@@ -106,6 +106,7 @@ nav:
   - Compliance:
     - Presets: compliance/presets.md
   - Integrations:
+    - Host Walk-throughs: integrations/hosts.md
     - IDE Setup: integrations/ide-setup.md
     - Framework Examples: integrations/frameworks.md
     - MCP Server Registry: integrations/registry.md
