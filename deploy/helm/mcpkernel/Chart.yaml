@@ -1,0 +1,28 @@
+apiVersion: v2
+name: mcpkernel
+description: |
+  MCPKernel — the mandatory, deterministic MCP/A2A gateway. Policy
+  enforcement, taint tracking, sandboxed execution, Sigstore-signed
+  deterministic envelopes, and tamper-proof audit for every AI agent
+  tool call. OWASP ASI 2026 compliant.
+type: application
+version: 0.3.0
+appVersion: "0.3.0"
+keywords:
+  - mcp
+  - a2a
+  - security
+  - ai-agents
+  - policy
+  - sandbox
+  - sigstore
+home: https://github.com/piyushptiwari1/mcpkernel
+sources:
+  - https://github.com/piyushptiwari1/mcpkernel
+maintainers:
+  - name: Piyush Tiwari
+    url: https://github.com/piyushptiwari1
+icon: https://raw.githubusercontent.com/piyushptiwari1/mcpkernel/main/docs/assets/logo.png
+annotations:
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/category: security

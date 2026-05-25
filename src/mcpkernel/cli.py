@@ -71,6 +71,31 @@ def validate_policy(
         raise typer.Exit(code=1) from exc
 
 
+@app.command("policy-lint")
+def policy_lint(
+    paths: Annotated[list[Path], typer.Argument(help="Policy YAML file(s) or directory(ies)")],
+    strict: Annotated[bool, typer.Option(help="Exit 1 on warnings as well as errors")] = False,
+) -> None:
+    """Static-analyze policy rules for shadowing, ReDoS, missing OWASP IDs, etc."""
+    from mcpkernel.policy.linter import LintSeverity, lint_files
+
+    findings = lint_files([str(p) for p in paths])
+    if not findings:
+        typer.echo("✓ No lint findings.")
+        return
+
+    errors = sum(1 for f in findings if f.severity == LintSeverity.ERROR)
+    warnings = sum(1 for f in findings if f.severity == LintSeverity.WARNING)
+    infos = sum(1 for f in findings if f.severity == LintSeverity.INFO)
+
+    for f in findings:
+        typer.echo(f.format())
+    typer.echo(f"\n{errors} error(s), {warnings} warning(s), {infos} info note(s)")
+
+    if errors or (strict and warnings):
+        raise typer.Exit(code=1)
+
+
 # ── DEE / Trace ────────────────────────────────────────────────────────
 @app.command()
 def trace_list(
