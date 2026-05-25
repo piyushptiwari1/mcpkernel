@@ -71,9 +71,13 @@ dependencies = [
 docker = ["docker>=7.0"]
 firecracker = ["aiofiles>=23.2"]
 wasm = ["wasmtime>=19.0"]
-ebpf = ["bcc>=0.30"]
+# eBPF support requires the `bcc` Python binding, which is provided by
+# system packages (e.g. `apt install python3-bpfcc`) rather than PyPI.
+# We expose an empty `ebpf` extra purely so `pip install mcpkernel[ebpf]`
+# does not error; the actual binding must be installed at the OS level.
+ebpf = []
 all = [
-    "mcpkernel[docker,firecracker,wasm,ebpf]",
+    "mcpkernel[docker,firecracker,wasm]",
 ]
 dev = [
     "pytest>=8.2",

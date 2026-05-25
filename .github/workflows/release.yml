@@ -63,6 +63,44 @@ jobs:
           name: dist
           path: dist/
 
+  sbom:
+    needs: ci-gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install runtime deps + cyclonedx-bom
+        run: |
+          uv pip install --system -e "."
+          uv pip install --system "cyclonedx-bom>=4.4"
+      - name: Generate CycloneDX SBOM (JSON)
+        run: |
+          mkdir -p sbom
+          cyclonedx-py environment \
+            --output-file sbom/mcpkernel-sbom.cdx.json \
+            --output-format JSON \
+            --schema-version 1.6
+      - name: Generate CycloneDX SBOM (XML)
+        run: |
+          cyclonedx-py environment \
+            --output-file sbom/mcpkernel-sbom.cdx.xml \
+            --output-format XML \
+            --schema-version 1.6
+      - name: Show SBOM summary
+        run: |
+          echo "Components in SBOM:"
+          python -c "import json; d=json.load(open('sbom/mcpkernel-sbom.cdx.json')); print(len(d.get('components', [])))"
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom/
+
   publish:
     needs: build
     runs-on: ubuntu-latest
@@ -79,7 +117,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
 
   github-release:
-    needs: build
+    needs: [build, sbom]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -89,6 +127,10 @@ jobs:
         with:
           name: dist
           path: dist/
+      - uses: actions/download-artifact@v4
+        with:
+          name: sbom
+          path: sbom/
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -96,4 +138,4 @@ jobs:
           gh release create ${{ github.ref_name }} \
             --title "MCPKernel ${{ github.ref_name }}" \
             --generate-notes \
-            dist/*
+            dist/* sbom/mcpkernel-sbom.cdx.json sbom/mcpkernel-sbom.cdx.xml
