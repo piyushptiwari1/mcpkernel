@@ -21,10 +21,13 @@
 
 ```bash
 pip install "mcpkernel[all]"
+mcpkernel init                                # scaffold .env, policies/, agent.yaml
 mcpkernel serve --host 127.0.0.1 --port 8000
 ```
 
 Point your MCP client to `http://localhost:8000/mcp` instead of targeting tool servers directly. Every tool call is now policy-checked, taint-scanned, sandboxed, and audit-logged.
+
+> Every setting can be configured via environment variables — see [`.env.example`](.env.example) for the full inventory, or `mcpkernel init` to drop a starter `.env` in your project.
 
 ### Option B: MCP Server (tool mode — one command)
 
