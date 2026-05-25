@@ -525,6 +525,58 @@ def create_proxy_app(settings: MCPKernelSettings | None = None) -> FastAPI:
             }
         )
 
+    @app.get("/health/secret")
+    async def health_secret(request: Request) -> Response:
+        """Detailed health with sensitive internals — gated by HMAC token.
+
+        Set ``MCPKERNEL_HEALTH_TOKEN`` in the environment to enable this
+        endpoint. Clients must send ``Authorization: Bearer <token>`` or
+        the ``X-MCPKernel-Health-Token`` header. Comparison is constant-time.
+        Returns 404 when no token is configured (endpoint is hidden) and
+        401 on mismatch.
+        """
+        import hmac
+        import os
+
+        expected = os.environ.get("MCPKERNEL_HEALTH_TOKEN", "")
+        if not expected:
+            return JSONResponse(content={"detail": "Not Found"}, status_code=404)
+
+        provided = ""
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.lower().startswith("bearer "):
+            provided = auth_header[7:].strip()
+        if not provided:
+            provided = request.headers.get("x-mcpkernel-health-token", "").strip()
+
+        if not provided or not hmac.compare_digest(provided, expected):
+            return JSONResponse(content={"detail": "Unauthorized"}, status_code=401)
+
+        report = await _health_check.check() if _health_check else None
+        return JSONResponse(
+            content={
+                "status": report.status.value if report else "unknown",
+                "service": "mcpkernel",
+                "version": __version__,
+                "mode": "proxy" if real_settings.upstream else "standalone",
+                "components": [
+                    {"name": c.name, "status": c.status.value, "details": c.details}
+                    for c in (report.components if report else [])
+                ],
+                "config": {
+                    "taint_mode": real_settings.taint.mode.value,
+                    "sandbox_backend": real_settings.sandbox.backend.value
+                    if hasattr(real_settings.sandbox.backend, "value")
+                    else str(real_settings.sandbox.backend),
+                    "auth_enabled": real_settings.auth.enabled,
+                    "policy_default": real_settings.policy.default_action,
+                    "dee_enabled": real_settings.dee.enabled,
+                    "audit_enabled": real_settings.audit.enabled,
+                    "upstream_servers": [s.name for s in real_settings.upstream],
+                },
+            }
+        )
+
     @app.get("/metrics")
     async def metrics_endpoint() -> Response:
         """Prometheus metrics scrape target."""
