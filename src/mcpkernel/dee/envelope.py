@@ -112,21 +112,54 @@ async def _sign_trace(
 ) -> str | None:
     """Sign the trace payload with Sigstore.
 
-    Returns the base64-encoded Sigstore bundle, or ``None`` on failure.
+    Signing flow
+    ------------
+    1. If ``SIGSTORE_ID_TOKEN`` is present in the environment (set by CI
+       providers like GitHub Actions, GitLab, Buildkite), use it directly
+       as the workload-identity OIDC token. This is the production path.
+    2. Otherwise fall back to Sigstore's default identity discovery
+       (interactive OAuth), which only works in a TTY-attached session.
+
+    When ``MCPKERNEL_DEE__REQUIRE_SIGN=true`` is set, this function raises
+    rather than silently degrading — used for production deployments that
+    must never emit unsigned envelopes.
+
+    Returns the JSON-serialized Sigstore bundle, or ``None`` on failure
+    (when not required).
     """
+    import os
+
     payload = f"{trace_id}:{input_hash}:{output_hash}:{env_hash}"
+    require_sign = os.environ.get("MCPKERNEL_DEE__REQUIRE_SIGN", "").lower() in ("1", "true", "yes")
+    id_token_str = os.environ.get("SIGSTORE_ID_TOKEN")
+
     try:
         from sigstore.sign import SigningContext
 
         ctx = SigningContext.production()
-        with ctx.signer() as signer:
+        identity: object | None = None
+        if id_token_str:
+            try:
+                from sigstore.oidc import IdentityToken
+
+                identity = IdentityToken(id_token_str)
+            except Exception:  # pragma: no cover - sigstore API drift
+                logger.warning("failed to parse SIGSTORE_ID_TOKEN, falling back to default identity")
+                identity = None
+
+        with ctx.signer(identity_token=identity) if identity else ctx.signer() as signer:
             result = signer.sign_artifact(payload.encode())
-            # Serialize bundle to JSON string
             bundle_json: str = result.bundle.to_json()
             return bundle_json
-    except ImportError:
+    except ImportError as exc:
+        if require_sign:
+            msg = "MCPKERNEL_DEE__REQUIRE_SIGN=true but the 'sigstore' package is not installed"
+            raise RuntimeError(msg) from exc
         logger.debug("sigstore not installed — trace signing disabled")
         return None
     except Exception:
+        if require_sign:
+            logger.error("sigstore signing failed and REQUIRE_SIGN is set", trace_id=trace_id, exc_info=True)
+            raise
         logger.warning("sigstore signing failed", trace_id=trace_id, exc_info=True)
         return None

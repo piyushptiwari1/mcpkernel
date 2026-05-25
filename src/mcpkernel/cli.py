@@ -566,6 +566,7 @@ def init(
     preset: Annotated[
         str, typer.Option("--preset", "-p", help="Policy preset: permissive, standard, strict")
     ] = "standard",
+    force: Annotated[bool, typer.Option("--force", help="Overwrite existing files")] = False,
 ) -> None:
     """Initialize MCPKernel in a project directory."""
     from mcpkernel.presets import get_preset_rules, list_presets
@@ -583,7 +584,7 @@ def init(
 
     # Create default config
     config_file = config_dir / "config.yaml"
-    if not config_file.exists():
+    if not config_file.exists() or force:
         config_file.write_text(
             f"# MCPKernel configuration (preset: {preset})\n"
             f"# {preset_info}\n"
@@ -622,13 +623,27 @@ def init(
     policies_dir.mkdir(exist_ok=True)
 
     default_policy = policies_dir / "default.yaml"
-    if not default_policy.exists():
+    if not default_policy.exists() or force:
         rules = get_preset_rules(preset)
         _export_preset_rules_yaml(rules, default_policy)
+
+    # Drop a starter .env so the env-var configuration path is discoverable.
+    env_file = directory / ".env"
+    if not env_file.exists() or force:
+        env_file.write_text(
+            "# MCPKernel local config — see .env.example for the full inventory.\n"
+            "MCPKERNEL_PROXY__HOST=127.0.0.1\n"
+            "MCPKERNEL_PROXY__PORT=8000\n"
+            "MCPKERNEL_AUTH__METHOD=none\n"
+            "MCPKERNEL_POLICY__POLICY_PATHS=.mcpkernel/policies/default.yaml\n"
+            "MCPKERNEL_AUDIT__DB_PATH=.mcpkernel/audit.db\n"
+            "MCPKERNEL_SECRETS_BACKEND=env\n"
+        )
 
     typer.echo(f"✓ Initialized MCPKernel in {config_dir} (preset: {preset})")
     typer.echo(f"  Config: {config_file}")
     typer.echo(f"  Policies: {policies_dir}")
+    typer.echo(f"  Env file: {env_file}")
     typer.echo(f"  Preset: {preset} — {preset_info}")
     typer.echo("")
     typer.echo("Next steps:")
