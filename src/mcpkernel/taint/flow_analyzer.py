@@ -1,4 +1,3 @@
-# ruff: noqa: E501
 """Toxic Flow Analyzer — static "lethal trifecta" detection for MCP tool sets.
 
 Inspired by Invariant Labs' Toxic Flow Analysis (TFA) — see
