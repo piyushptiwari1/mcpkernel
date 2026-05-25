@@ -102,6 +102,6 @@ if the system package is present; otherwise MCPKernel degrades gracefully.
 
 ## Related
 
-- [`CHANGELOG.md`](../../CHANGELOG.md) — per-release dependency deltas
-- [Release workflow](../../.github/workflows/release.yml) — SBOM generation
-- [`docs/trust/`](../trust/) — runtime attestation chain
+- [`CHANGELOG.md`](https://github.com/piyushptiwari1/mcpkernel/blob/main/CHANGELOG.md) — per-release dependency deltas
+- [Release workflow](https://github.com/piyushptiwari1/mcpkernel/blob/main/.github/workflows/release.yml) — SBOM generation
+- [Trust framework](../trust/causal-trust-graph.md) — runtime attestation chain

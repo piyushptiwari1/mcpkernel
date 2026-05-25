@@ -84,13 +84,13 @@ jobs:
           cyclonedx-py environment \
             --output-file sbom/mcpkernel-sbom.cdx.json \
             --output-format JSON \
-            --schema-version 1.6
+            --spec-version 1.6
       - name: Generate CycloneDX SBOM (XML)
         run: |
           cyclonedx-py environment \
             --output-file sbom/mcpkernel-sbom.cdx.xml \
             --output-format XML \
-            --schema-version 1.6
+            --spec-version 1.6
       - name: Show SBOM summary
         run: |
           echo "Components in SBOM:"

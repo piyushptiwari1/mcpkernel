@@ -103,6 +103,7 @@ nav:
   - Security Protections:
     - Overview: security/overview.md
     - Attack Defenses: security/attack-defenses.md
+    - Threat Model (STRIDE): security/threat-model.md
   - Compliance:
     - Presets: compliance/presets.md
     - OWASP LLM Top-10: compliance/owasp-llm-top10.md
@@ -120,4 +121,6 @@ nav:
     - End-to-End: examples/end-to-end.md
   - CLI Reference: cli/reference.md
   - API Reference: api/reference.md
+  - Contributing:
+    - Reproducible Builds: contributing/reproducible-builds.md
   - Troubleshooting: troubleshooting.md
