@@ -75,8 +75,16 @@ _CLASSIFIERS: list[tuple[re.Pattern[str], FlowCategory, float]] = [
     (re.compile(r"\b(fetch[_-]?url|http[_-]?get|browse|scrape|crawl)\b", re.I), FlowCategory.UNTRUSTED_INPUT, 1.0),
     (re.compile(r"\b(read[_-]?email|email[_-]?fetch|imap|gmail)\b", re.I), FlowCategory.UNTRUSTED_INPUT, 1.0),
     (re.compile(r"\b(read[_-]?file|cat|fs[_-]?read|filesystem[_-]?read)\b", re.I), FlowCategory.UNTRUSTED_INPUT, 0.7),
-    (re.compile(r"\b(github[_-]?(issues?|comments?|prs?)|gitlab[_-]?(issues?|comments?))\b", re.I), FlowCategory.UNTRUSTED_INPUT, 1.0),
-    (re.compile(r"\b(slack[_-]?read|teams[_-]?read|discord[_-]?read|chat[_-]?history)\b", re.I), FlowCategory.UNTRUSTED_INPUT, 1.0),
+    (
+        re.compile(r"\b(github[_-]?(issues?|comments?|prs?)|gitlab[_-]?(issues?|comments?))\b", re.I),
+        FlowCategory.UNTRUSTED_INPUT,
+        1.0,
+    ),
+    (
+        re.compile(r"\b(slack[_-]?read|teams[_-]?read|discord[_-]?read|chat[_-]?history)\b", re.I),
+        FlowCategory.UNTRUSTED_INPUT,
+        1.0,
+    ),
     (re.compile(r"\b(elicit|user[_-]?input|prompt[_-]?user)\b", re.I), FlowCategory.UNTRUSTED_INPUT, 1.0),
     (re.compile(r"\b(resources?[/_-]?read|mcp[_-]?resource)\b", re.I), FlowCategory.UNTRUSTED_INPUT, 0.8),
     # --- Sensitive data --------------------------------------------------
@@ -86,17 +94,29 @@ _CLASSIFIERS: list[tuple[re.Pattern[str], FlowCategory, float]] = [
     (re.compile(r"\b(ssh[_-]?key|private[_-]?key|pem|gpg)\b", re.I), FlowCategory.SENSITIVE_DATA, 1.0),
     (re.compile(r"\b(database|db[_-]?query|sql|postgres|mysql|mongo)\b", re.I), FlowCategory.SENSITIVE_DATA, 0.8),
     (re.compile(r"\b(internal[_-]?api|admin[_-]?api|management[_-]?api)\b", re.I), FlowCategory.SENSITIVE_DATA, 0.9),
-    (re.compile(r"\b(pii|personal[_-]?data|customer[_-]?data|user[_-]?data)\b", re.I), FlowCategory.SENSITIVE_DATA, 1.0),
+    (
+        re.compile(r"\b(pii|personal[_-]?data|customer[_-]?data|user[_-]?data)\b", re.I),
+        FlowCategory.SENSITIVE_DATA,
+        1.0,
+    ),
     (re.compile(r"\b(read[_-]?file|cat|fs[_-]?read)\b", re.I), FlowCategory.SENSITIVE_DATA, 0.5),
     # --- Exfil sinks -----------------------------------------------------
     (re.compile(r"\b(http[_-]?post|http[_-]?put|http[_-]?request|fetch)\b", re.I), FlowCategory.EXFIL_SINK, 1.0),
     (re.compile(r"\b(send[_-]?email|email[_-]?send|smtp|sendmail)\b", re.I), FlowCategory.EXFIL_SINK, 1.0),
-    (re.compile(r"\b(slack[_-]?post|slack[_-]?send|teams[_-]?post|discord[_-]?send)\b", re.I), FlowCategory.EXFIL_SINK, 1.0),
+    (
+        re.compile(r"\b(slack[_-]?post|slack[_-]?send|teams[_-]?post|discord[_-]?send)\b", re.I),
+        FlowCategory.EXFIL_SINK,
+        1.0,
+    ),
     (re.compile(r"\b(webhook|zapier|ifttt|n8n)\b", re.I), FlowCategory.EXFIL_SINK, 1.0),
     (re.compile(r"\b(upload|s3[_-]?put|blob[_-]?upload|gcs[_-]?upload)\b", re.I), FlowCategory.EXFIL_SINK, 1.0),
     (re.compile(r"\b(write[_-]?file|fs[_-]?write|file[_-]?write)\b", re.I), FlowCategory.EXFIL_SINK, 0.4),
     (re.compile(r"\b(dns[_-]?query|nslookup|resolve)\b", re.I), FlowCategory.EXFIL_SINK, 0.7),
-    (re.compile(r"\b(open[_-]?url|browser[_-]?open|render[_-]?image|fetch[_-]?image)\b", re.I), FlowCategory.EXFIL_SINK, 0.9),
+    (
+        re.compile(r"\b(open[_-]?url|browser[_-]?open|render[_-]?image|fetch[_-]?image)\b", re.I),
+        FlowCategory.EXFIL_SINK,
+        0.9,
+    ),
 ]
 
 
@@ -205,9 +225,7 @@ class ToxicFlowAnalyzer:
             if pattern.search(raw) or pattern.search(spaced):
                 # Take max confidence if a tool matches multiple patterns of
                 # the same category.
-                profile.categories[category] = max(
-                    profile.categories.get(category, 0.0), confidence
-                )
+                profile.categories[category] = max(profile.categories.get(category, 0.0), confidence)
 
         self._profiles[name] = profile
         return profile

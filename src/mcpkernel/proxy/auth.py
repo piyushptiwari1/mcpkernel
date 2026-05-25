@@ -206,15 +206,13 @@ class OAuth2Auth(AuthBackend):
             if self._resource not in audiences:
                 if self._require_resource:
                     raise AuthError(
-                        "Token audience does not match this resource "
-                        f"({self._resource!r}); refusing per RFC 8707."
+                        f"Token audience does not match this resource ({self._resource!r}); refusing per RFC 8707."
                     )
                 logger.warning(
                     "oauth2_resource_indicator_mismatch",
                     expected=self._resource,
                     received=audiences,
-                    note="MCP 2025-11-25 requires resource indicator. "
-                    "Set require_resource=True to enforce.",
+                    note="MCP 2025-11-25 requires resource indicator. Set require_resource=True to enforce.",
                 )
 
         # Extract identity and scopes from standard claims
