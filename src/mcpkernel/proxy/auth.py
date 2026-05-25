@@ -83,7 +83,7 @@ class OAuth2Auth(AuthBackend):
         audience: str | None = None,
         *,
         resource: str | None = None,
-        require_resource: bool = False,
+        require_resource: bool = True,
     ) -> None:
         """Configure OAuth2 / JWT validation.
 
@@ -105,8 +105,10 @@ class OAuth2Auth(AuthBackend):
             ``"https://mcp.example.com/"``.
         require_resource:
             If True, reject any token whose ``aud`` does not match
-            ``resource`` (RFC 8707 strict mode). Default False for backwards
-            compatibility — flip to True for MCP 2025-11-25 conformance.
+            ``resource`` (RFC 8707 strict mode). **Default True as of
+            v0.3.0** — MCP 2025-11-25 mandates resource-indicator
+            enforcement. Set to False only for legacy callers that
+            cannot mint audience-scoped tokens yet.
         """
         self._jwks_url = jwks_url
         self._issuer = issuer

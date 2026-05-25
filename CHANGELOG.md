@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] — v0.2.0 advances
 
 ### Added
+- **Taint scanning of tool results** — `TaintHook.post_execution` now scans
+  both `content` and `structuredContent` returned by upstream MCP tools for
+  secret/PII patterns and labels them so downstream policy/DEE/audit see
+  the same taint as request-side detections.
+- **Elicitation responses tainted as `USER_INPUT`** — when proxy code
+  stashes the reply to `elicitation/create` on
+  `ctx.extra["elicitation_response"]`, every string value (recursively) is
+  marked `TaintLabel.USER_INPUT`, so user-supplied answers can't slip into
+  exfil sinks unnoticed.
+
+### Changed
+- **BREAKING:** `OAuth2Auth(require_resource=...)` now defaults to `True`
+  (MCP 2025-11-25 mandates RFC 8707 resource-indicator enforcement).
+  Callers that supplied a `resource=` URI but relied on the old permissive
+  default must either set `require_resource=False` explicitly, or — better —
+  start minting audience-scoped tokens. Existing callers that did not set
+  `resource=` are unaffected (the check is skipped when no resource URI is
+  configured).
+
+### Added
 - **Toxic Flow Analyzer** (`mcpkernel.taint.ToxicFlowAnalyzer`) — static
   "lethal trifecta" detection over MCP tool manifests. Enumerates every
   (untrusted-input, sensitive-data, exfil-sink) triple before runtime and
