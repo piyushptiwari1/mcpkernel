@@ -150,6 +150,26 @@ async def _sign_trace(
         with ctx.signer(identity_token=identity) if identity else ctx.signer() as signer:
             result = signer.sign_artifact(payload.encode())
             bundle_json: str = result.bundle.to_json()
+            # C.4: assert Sigstore Bundle v0.3 format (MCP 2025-11-25 /
+            # sigstore-python >=3.0). Bundles advertise their schema via
+            # the ``mediaType`` field — anything else is a downgrade and
+            # must be rejected when REQUIRE_SIGN is set.
+            try:
+                import json as _json
+
+                media_type = _json.loads(bundle_json).get("mediaType", "")
+            except Exception:
+                media_type = ""
+            if "bundle.v0.3" not in media_type:
+                if require_sign:
+                    msg = (
+                        f"Sigstore bundle is not v0.3 (got mediaType={media_type!r}); "
+                        "refusing per REQUIRE_SIGN."
+                    )
+                    raise RuntimeError(msg)
+                logger.warning(
+                    "sigstore bundle is not v0.3", media_type=media_type, trace_id=trace_id
+                )
             return bundle_json
     except ImportError as exc:
         if require_sign:

@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] — v0.2.0 advances
 
 ### Added
+- **DSSE / in-toto v1 audit-batch attestation** (`mcpkernel.audit.attest_audit_batch`) —
+  rolls a batch of `AuditEntry` records into an in-toto v1 Statement
+  (predicate type `https://mcpkernel.dev/attestations/audit-batch/v1`),
+  wraps it in a DSSE envelope (`application/vnd.in-toto+json`), and
+  Sigstore-signs the PAE. Drop-in for SLSA / Rekor archival.
+- **Sigstore Bundle v0.3 enforcement** — `_sign_trace()` now asserts
+  `mediaType` contains `bundle.v0.3`. Under `MCPKERNEL_DEE__REQUIRE_SIGN`
+  any other format is rejected.
 - **Taint scanning of tool results** — `TaintHook.post_execution` now scans
   both `content` and `structuredContent` returned by upstream MCP tools for
   secret/PII patterns and labels them so downstream policy/DEE/audit see
