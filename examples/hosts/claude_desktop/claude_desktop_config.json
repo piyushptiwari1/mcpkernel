@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "mcpkernel": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "http://127.0.0.1:8080/mcp"
+      ]
+    }
+  }
+}

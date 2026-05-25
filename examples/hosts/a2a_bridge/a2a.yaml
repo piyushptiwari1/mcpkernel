@@ -1,0 +1,24 @@
+proxy:
+  host: 127.0.0.1
+  port: 8080
+
+upstream:
+  - name: agent_b
+    transport: streamable_http
+    url: http://127.0.0.1:3001/mcp
+  - name: agent_a
+    transport: streamable_http
+    url: http://127.0.0.1:3002/mcp
+
+taint:
+  mode: full
+  block_on_violation: true
+
+policy:
+  policy_paths:
+    - a2a_policy.yaml
+  default_action: audit
+
+audit:
+  enabled: true
+  db_path: ./a2a_audit.db

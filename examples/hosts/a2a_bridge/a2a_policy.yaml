@@ -1,0 +1,22 @@
+rules:
+  - id: A2A-001
+    name: Block agent A from passing user secrets to agent B
+    description: Any tainted secret coming from agent A must not reach B
+    action: deny
+    priority: 5
+    server_patterns: ["agent_b"]
+    taint_labels: [secret, api_key, pii]
+
+  - id: A2A-002
+    name: Cap agent B's privilege
+    description: B is "worker" — never let it call destructive tools
+    action: deny
+    priority: 5
+    server_patterns: ["agent_b"]
+    tool_patterns: ["delete_.*", "drop_.*", "shell_exec"]
+
+  - id: A2A-003
+    name: Audit everything else
+    action: audit
+    priority: 100
+    tool_patterns: [".*"]

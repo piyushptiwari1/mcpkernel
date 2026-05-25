@@ -1164,5 +1164,20 @@ def scan_skill(
             typer.echo(f"✓ No security issues found in {skill_path}")
 
 
+@app.command()
+def gen_token(
+    length: Annotated[int, typer.Option(help="Random bytes before base64 encoding")] = 32,
+) -> None:
+    """Print a URL-safe random token for MCPKERNEL_HEALTH_TOKEN or similar.
+
+    Use this for any shared-secret value MCPKernel asks for in .env —
+    e.g. ``MCPKERNEL_HEALTH_TOKEN``. The token is generated locally with
+    ``secrets.token_urlsafe`` and never leaves your machine.
+    """
+    import secrets as _secrets
+
+    typer.echo(_secrets.token_urlsafe(length))
+
+
 if __name__ == "__main__":
     app()
