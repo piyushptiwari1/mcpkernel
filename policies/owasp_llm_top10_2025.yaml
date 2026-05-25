@@ -1,0 +1,157 @@
+# MCPKernel — OWASP LLM Top 10 (2025) Policy Preset
+#
+# Maps MCPKernel runtime rules to the canonical OWASP GenAI Security Project
+# "OWASP Top 10 for LLM Applications" (2025 edition).
+#
+# Reference: https://genai.owasp.org/llm-top-10/
+#
+# This preset is intentionally additive to (and overlaps with) the
+# `owasp_asi_2026_strict.yaml` preset shipped alongside MCPKernel — they
+# share enforcement primitives but track different OWASP work-streams.
+
+rules:
+  # ── LLM01: Prompt Injection ──────────────────────────────────────────
+  - id: LLM01-001
+    name: Block untrusted input in eval-like sinks
+    description: Prevent indirect/direct prompt-injection content from reaching code-execution sinks
+    action: deny
+    priority: 10
+    tool_patterns:
+      - ".*"
+    taint_labels:
+      - user_input
+      - llm_output
+      - untrusted_external
+    owasp_llm_id: LLM01
+    owasp_asi_id: ASI-01
+
+  # ── LLM02: Sensitive Information Disclosure ──────────────────────────
+  - id: LLM02-001
+    name: Block PII in outbound calls
+    description: Prevent PII-tainted data from being transmitted to external services
+    action: deny
+    priority: 10
+    tool_patterns:
+      - "http_.*"
+      - ".*_post"
+      - ".*_send"
+      - "email_.*"
+      - "slack_.*"
+      - "webhook_.*"
+    taint_labels:
+      - pii
+      - secret
+    owasp_llm_id: LLM02
+    owasp_asi_id: ASI-03
+
+  - id: LLM02-002
+    name: Block secret tokens in any sink
+    description: Refuse to forward tokens/credentials/API keys regardless of destination
+    action: deny
+    priority: 5
+    tool_patterns:
+      - ".*"
+    taint_labels:
+      - secret
+    owasp_llm_id: LLM02
+
+  # ── LLM03: Supply Chain ──────────────────────────────────────────────
+  - id: LLM03-001
+    name: Require signed envelopes for replayed tools
+    description: DEE replay requires Sigstore-signed envelopes
+    action: audit
+    priority: 50
+    tool_patterns:
+      - ".*"
+    owasp_llm_id: LLM03
+
+  # ── LLM04: Data and Model Poisoning ──────────────────────────────────
+  - id: LLM04-001
+    name: Detect poisoned tool descriptions at install
+    description: Run skill-scanner against new MCP server installations
+    action: audit
+    priority: 60
+    tool_patterns:
+      - ".*"
+    owasp_llm_id: LLM04
+
+  # ── LLM05: Improper Output Handling ──────────────────────────────────
+  - id: LLM05-001
+    name: Sandbox all code-execution outputs
+    description: Force sandbox execution for any tool that runs code, returning structured (untrusted) output
+    action: sandbox
+    priority: 20
+    tool_patterns:
+      - "execute_.*"
+      - "run_.*"
+      - "shell_.*"
+      - "code_.*"
+      - "eval_.*"
+    owasp_llm_id: LLM05
+    owasp_asi_id: ASI-02
+
+  # ── LLM06: Excessive Agency ──────────────────────────────────────────
+  - id: LLM06-001
+    name: Deny uncontrolled shell access
+    description: Block tools that grant unbounded shell/system access without sandbox mediation
+    action: deny
+    priority: 10
+    tool_patterns:
+      - "shell_exec"
+      - "os_command"
+      - "subprocess_run"
+      - "system_exec"
+    owasp_llm_id: LLM06
+    owasp_asi_id: ASI-02
+
+  # ── LLM07: System Prompt Leakage ─────────────────────────────────────
+  - id: LLM07-001
+    name: Block system-prompt exfiltration paths
+    description: Detect outbound data that mirrors known system-prompt fragments
+    action: deny
+    priority: 15
+    tool_patterns:
+      - "http_.*"
+      - ".*_post"
+      - ".*_send"
+    taint_labels:
+      - llm_output
+      - system_prompt
+    owasp_llm_id: LLM07
+
+  # ── LLM08: Vector and Embedding Weaknesses ───────────────────────────
+  - id: LLM08-001
+    name: Audit retrieval-augmented context fetches
+    description: Log all RAG/vector retrievals for traceability and poisoning forensics
+    action: audit
+    priority: 70
+    tool_patterns:
+      - ".*search.*"
+      - ".*retrieve.*"
+      - ".*query_.*"
+    owasp_llm_id: LLM08
+
+  # ── LLM09: Misinformation ────────────────────────────────────────────
+  - id: LLM09-001
+    name: Audit knowledge-base writes
+    description: All write operations to shared knowledge bases must be logged with provenance
+    action: audit
+    priority: 70
+    tool_patterns:
+      - ".*_write"
+      - "kb_.*"
+      - "memory_.*"
+    owasp_llm_id: LLM09
+
+  # ── LLM10: Unbounded Consumption ─────────────────────────────────────
+  - id: LLM10-001
+    name: Rate-limit expensive operations
+    description: Cap calls to high-cost tools (LLM passthrough, image generation) per agent identity
+    action: audit  # The rate-limiter sits in proxy/rate_limit.py; this rule documents intent
+    priority: 80
+    tool_patterns:
+      - "llm_.*"
+      - "complete_.*"
+      - "image_.*"
+      - "generate_.*"
+    owasp_llm_id: LLM10

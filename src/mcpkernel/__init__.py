@@ -13,7 +13,16 @@ Quick start::
 
 from __future__ import annotations
 
-__version__ = "0.1.3"
+# Single source of truth for the package version: read from the installed
+# distribution metadata (driven by pyproject.toml). This prevents the
+# __init__.py / pyproject.toml / docs drift problem.
+try:
+    from importlib.metadata import PackageNotFoundError
+    from importlib.metadata import version as _pkg_version
+
+    __version__ = _pkg_version("mcpkernel")
+except PackageNotFoundError:  # pragma: no cover - source checkout, not installed
+    __version__ = "0.0.0+local"
 __all__ = [
     "POLICY_PRESETS",
     "AuthError",

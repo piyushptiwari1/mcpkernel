@@ -149,9 +149,10 @@ Output:
 mcpkernel audit-query --event-type policy_violation --limit 5
 
 # Export in SIEM format
-mcpkernel audit-query --format cef > siem_export.log
-mcpkernel audit-query --format jsonl > structured.jsonl
-mcpkernel audit-query --format csv > spreadsheet.csv
+mcpkernel audit-query --export-format cef > siem_export.log
+mcpkernel audit-query --export-format jsonl > structured.jsonl
+mcpkernel audit-query --export-format csv > spreadsheet.csv
+mcpkernel audit-query --export-format sarif > findings.sarif
 ```
 
 ### Verify log integrity

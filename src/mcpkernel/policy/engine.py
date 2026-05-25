@@ -35,6 +35,9 @@ class PolicyRule:
     taint_labels: list[str] = field(default_factory=list)
     # OWASP ASI 2026 mapping
     owasp_asi_id: str = ""
+    # OWASP GenAI "Top 10 for LLM Applications" 2025 mapping
+    # https://genai.owasp.org/llm-top-10/  (LLM01-LLM10)
+    owasp_llm_id: str = ""
     # Conditions
     conditions: dict[str, Any] = field(default_factory=dict)
     enabled: bool = True
@@ -138,6 +141,7 @@ class PolicyEngine:
             reasons=reasons,
             metadata={
                 "owasp_asi_ids": [r.owasp_asi_id for r in matched if r.owasp_asi_id],
+                "owasp_llm_ids": [r.owasp_llm_id for r in matched if r.owasp_llm_id],
             },
         )
         logger.info(

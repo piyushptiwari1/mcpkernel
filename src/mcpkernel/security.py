@@ -321,7 +321,23 @@ class SessionGuard:
         *,
         max_age_seconds: int = 3600,
     ) -> None:
-        self._secret = secret.encode() if secret else b"mcpkernel-default-session-key"
+        if secret:
+            self._secret = secret.encode()
+            self._ephemeral_secret = False
+        else:
+            # SECURITY: never fall back to a hard-coded constant — that lets
+            # any attacker who knows the constant forge valid session tokens.
+            # Generate a fresh random per-process secret instead. Sessions
+            # will not survive a process restart, which is the safe default.
+            import secrets as _secrets
+
+            self._secret = _secrets.token_bytes(32)
+            self._ephemeral_secret = True
+            logger.warning(
+                "SessionGuard initialized without an explicit secret — "
+                "generated an ephemeral random key. Sessions will not survive "
+                "process restarts. Pass `secret=...` for stable sessions."
+            )
         self._max_age = max_age_seconds
         self._active_sessions: dict[str, dict[str, Any]] = {}
 

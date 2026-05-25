@@ -18,6 +18,7 @@ class AuditExportFormat(StrEnum):
     JSON_LINES = "jsonl"
     CSV = "csv"
     SIEM_CEF = "cef"  # Common Event Format
+    SARIF = "sarif"  # SARIF 2.1.0 — GitHub code-scanning / Defender / Snyk ingestion
 
 
 def export_audit_logs(
@@ -32,6 +33,8 @@ def export_audit_logs(
             return _export_csv(entries)
         case AuditExportFormat.SIEM_CEF:
             return _export_cef(entries)
+        case AuditExportFormat.SARIF:
+            return _export_sarif(entries)
 
 
 def _export_jsonl(entries: list[AuditEntry]) -> str:
@@ -104,3 +107,47 @@ def _export_cef(entries: list[AuditEntry]) -> str:
         )
         lines.append(cef)
     return "\n".join(lines)
+
+
+def _export_sarif(entries: list[AuditEntry]) -> str:
+    """Export audit entries as a SARIF 2.1.0 JSON document.
+
+    SARIF (Static Analysis Results Interchange Format) is the OASIS standard
+    consumed by GitHub Code Scanning, Microsoft Defender for Cloud, Snyk,
+    Azure DevOps, and VS Code SARIF Viewer. Mapping rules:
+
+    * ``policy_violation`` / ``taint_violation`` -> SARIF result (level=error)
+    * ``allowed`` / ``audit`` events with no violation -> SARIF result (level=note)
+    * ``blocked`` outcome -> level=error
+    * ``warned`` outcome -> level=warning
+    """
+    from mcpkernel.audit.sarif import SARIFResult, generate_sarif
+
+    level_for = {
+        "blocked": "error",
+        "denied": "error",
+        "warned": "warning",
+        "allowed": "note",
+        "audited": "note",
+    }
+
+    results: list[SARIFResult] = []
+    for e in entries:
+        level = level_for.get(e.outcome.lower() if e.outcome else "", "note")
+        msg = f"{e.event_type}: {e.action} on tool '{e.tool_name}' -> {e.outcome}"
+        if isinstance(e.details, dict) and e.details:
+            reason = e.details.get("reason") or e.details.get("rule_id") or ""
+            if reason:
+                msg = f"{msg} ({reason})"
+        results.append(
+            SARIFResult(
+                rule_id=str(e.event_type) or "mcpkernel.audit",
+                level=level,
+                message=msg,
+                file_path=e.tool_name or "",
+                help_text=f"agent={e.agent_id} trace={e.trace_id}",
+                help_uri="https://github.com/piyushptiwari1/mcpkernel/blob/main/docs/core/audit.md",
+            )
+        )
+
+    return json.dumps(generate_sarif(results), indent=2, ensure_ascii=False)
