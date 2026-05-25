@@ -70,9 +70,7 @@ def lint_rules(rules: list[PolicyRule]) -> list[LintFinding]:
         seen_ids[r.id] = seen_ids.get(r.id, 0) + 1
     for rid, n in seen_ids.items():
         if n > 1:
-            findings.append(
-                LintFinding(rid, "PL001", LintSeverity.ERROR, f"duplicate rule id appears {n}x")
-            )
+            findings.append(LintFinding(rid, "PL001", LintSeverity.ERROR, f"duplicate rule id appears {n}x"))
 
     # Per-rule structural / regex checks
     for r in rules:
@@ -88,14 +86,10 @@ def lint_rules(rules: list[PolicyRule]) -> list[LintFinding]:
 
         for pat in r.tool_patterns:
             if not isinstance(pat, str) or not pat:
-                findings.append(
-                    LintFinding(r.id, "PL003", LintSeverity.ERROR, f"empty/invalid tool pattern: {pat!r}")
-                )
+                findings.append(LintFinding(r.id, "PL003", LintSeverity.ERROR, f"empty/invalid tool pattern: {pat!r}"))
                 continue
             if _looks_redos(pat):
-                findings.append(
-                    LintFinding(r.id, "PL004", LintSeverity.WARNING, f"ReDoS-prone pattern: {pat!r}")
-                )
+                findings.append(LintFinding(r.id, "PL004", LintSeverity.WARNING, f"ReDoS-prone pattern: {pat!r}"))
             if pat in (".*", ".+", "*", "**"):
                 findings.append(
                     LintFinding(

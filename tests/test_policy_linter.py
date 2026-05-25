@@ -42,9 +42,7 @@ class TestLintRules:
         assert any(f.severity == LintSeverity.ERROR for f in findings)
 
     def test_detects_empty_match_criteria(self) -> None:
-        findings = lint_rules(
-            [_rule("empty", tool_patterns=[], argument_patterns={}, taint_labels=[])]
-        )
+        findings = lint_rules([_rule("empty", tool_patterns=[], argument_patterns={}, taint_labels=[])])
         assert any(f.code == "PL002" for f in findings)
 
     def test_detects_redos_pattern(self) -> None:

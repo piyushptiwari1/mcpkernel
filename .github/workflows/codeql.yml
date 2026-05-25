@@ -31,20 +31,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
+          # The `security-and-quality` suite already includes the
+          # standard Python and Actions security queries; additional
+          # curated packs (e.g. codeql/python-queries) are bundled into
+          # this suite and do not need to be listed separately.
           queries: security-and-quality
-          # Pull in the curated security-experimental pack as well, which
-          # includes prompt-injection / unsafe-deserialization queries that
-          # are highly relevant for an MCP gateway.
-          packs: |
-            codeql/python-queries
-            codeql/actions-queries
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
           upload: always
