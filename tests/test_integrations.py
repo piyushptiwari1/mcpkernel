@@ -314,7 +314,7 @@ class TestMCPRegistry:
         s = _parse_server(data)
         assert s.name == "my-server"
         assert "database" in s.categories
-        assert "github.com" in s.repository_url
+        assert s.repository_url.startswith("https://github.com/")
 
     @pytest.mark.asyncio
     async def test_search_returns_empty_on_error(self) -> None:

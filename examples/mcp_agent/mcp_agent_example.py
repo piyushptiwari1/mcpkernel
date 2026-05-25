@@ -44,8 +44,9 @@ async def main() -> None:
     app = MCPApp(name="mcpkernel-demo")
 
     async with app.run() as agent_app:
-        # Create an agent context that uses the proxied MCP servers
-        context = agent_app.context
+        # The agent_app context wires the proxied MCP servers via the
+        # mcp-agent settings; we don't need to use it directly here.
+        del agent_app
 
         # Create an agent with access to the tools registered in MCPKernel
         agent = Agent(
