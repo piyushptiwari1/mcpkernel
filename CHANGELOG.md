@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] — v0.2.0 advances
 
 ### Added
+- **Property-based fuzz tests** for the proxy JSON-RPC parser
+  (`tests/test_proxy_fuzz.py`) — Hypothesis-driven generators feed
+  arbitrary nested JSON into `parse_mcp_tool_call`,
+  `build_jsonrpc_response`, and `build_jsonrpc_error`. ~1200 generated
+  cases per run prove the parser never raises on adversarial input and
+  always emits JSON-RPC 2.0 compliant envelopes.
+- **CycloneDX SBOM in releases** — `release.yml` now produces
+  `mcpkernel-sbom.cdx.json` and `.cdx.xml` (CycloneDX 1.6) via
+  `cyclonedx-bom`, uploads them as workflow artifacts, and attaches them
+  to the GitHub Release alongside the wheel/sdist.
+- **Native CodeQL workflow** (`.github/workflows/codeql.yml`) — Python
+  and GitHub-Actions analysis with the `security-and-quality` query suite
+  plus `codeql/python-queries` and `codeql/actions-queries` packs. Runs
+  on push, PR, and weekly schedule. The redundant CodeQL job in
+  `security.yml` was removed.
+- **Reproducible-builds docs** (`docs/contributing/reproducible-builds.md`) —
+  step-by-step guide to rebuilding the published wheel from `uv.lock` +
+  SBOM, including dependency-bump workflow and the eBPF / `bcc`
+  system-package caveat.
+- **`uv.lock` committed** — universal lockfile pinning all 131
+  transitive dependencies; CI uses `uv sync --frozen` for byte-stable
+  builds.
 - **`mcpkernel policy-lint` subcommand** — static analysis over policy
   rule sets. Codes PL001–PL007 cover duplicate IDs (error), unmatchable
   rules (warn), invalid tool patterns (error), ReDoS-prone regexes
@@ -49,6 +71,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   start minting audience-scoped tokens. Existing callers that did not set
   `resource=` are unaffected (the check is skipped when no resource URI is
   configured).
+- **`ebpf` extra is now empty on PyPI.** The `bcc` Python binding is
+  distributed only as an OS package (`apt install python3-bpfcc`) and
+  cannot be resolved by `uv lock` / `pip`. Install it system-wide; runtime
+  detection is unchanged. `pip install mcpkernel[ebpf]` still works (no-op).
 
 ### Added
 - **Toxic Flow Analyzer** (`mcpkernel.taint.ToxicFlowAnalyzer`) — static
