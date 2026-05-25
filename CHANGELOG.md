@@ -5,7 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — v0.2.0 advances
+## [0.3.0] — 2026-05-25
+
+Theme: **deep-advance hardening.** Six-section roadmap (A–F) landing
+post-execution taint scanning, RFC 8707 enforcement, Sigstore Bundle
+v0.3, DSSE/in-toto audit attestations, policy linter, Grafana + Helm
+deployment kit, supply-chain hardening (SBOM, lockfile, CodeQL, fuzz
+tests), and complete compliance documentation.
+
+### Added (Section F)
+- **`docs/compliance/owasp-llm-top10.md`** — full mapping of the OWASP
+  LLM Top-10 (2025) to MCPKernel controls, with status (Full /
+  Partial / Out of scope) and per-item policy snippets.
+- **`THREAT_MODEL.md`** — STRIDE threat model covering 6 trust
+  boundaries, 8 data flows, 30+ enumerated threats with mitigations
+  and residual risk ratings, plus top-5 prioritised risks and
+  assumptions.
+- **`benchmarks/taint_overhead.py`** — micro-benchmark for taint
+  detection + marking hot path; emits text table or JSON for CI
+  regression tracking.
+
+### Changed (Section F)
+- Version bumped to `0.3.0`.
+- README gains a "What's new in v0.3.0" highlight section linking to
+  the threat model and OWASP mapping.
+
+## [0.3.0-pre] — section-by-section advances
 
 ### Added
 - **Property-based fuzz tests** for the proxy JSON-RPC parser

@@ -162,14 +162,9 @@ async def _sign_trace(
                 media_type = ""
             if "bundle.v0.3" not in media_type:
                 if require_sign:
-                    msg = (
-                        f"Sigstore bundle is not v0.3 (got mediaType={media_type!r}); "
-                        "refusing per REQUIRE_SIGN."
-                    )
+                    msg = f"Sigstore bundle is not v0.3 (got mediaType={media_type!r}); refusing per REQUIRE_SIGN."
                     raise RuntimeError(msg)
-                logger.warning(
-                    "sigstore bundle is not v0.3", media_type=media_type, trace_id=trace_id
-                )
+                logger.warning("sigstore bundle is not v0.3", media_type=media_type, trace_id=trace_id)
             return bundle_json
     except ImportError as exc:
         if require_sign:

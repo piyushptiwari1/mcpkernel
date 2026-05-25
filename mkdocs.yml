@@ -105,6 +105,7 @@ nav:
     - Attack Defenses: security/attack-defenses.md
   - Compliance:
     - Presets: compliance/presets.md
+    - OWASP LLM Top-10: compliance/owasp-llm-top10.md
   - Integrations:
     - Host Walk-throughs: integrations/hosts.md
     - IDE Setup: integrations/ide-setup.md

@@ -162,9 +162,7 @@ def attest_audit_batch(
                 bundle_obj = json.loads(bundle_json)
                 raw_sig = (
                     bundle_obj.get("messageSignature", {}).get("signature")
-                    or bundle_obj.get("dsseEnvelope", {})
-                    .get("signatures", [{}])[0]
-                    .get("sig")
+                    or bundle_obj.get("dsseEnvelope", {}).get("signatures", [{}])[0].get("sig")
                     or ""
                 )
                 signatures.append({"sig": raw_sig, "keyid": "sigstore"})

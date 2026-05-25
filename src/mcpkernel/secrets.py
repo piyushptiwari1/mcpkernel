@@ -159,7 +159,7 @@ class AwsSecretsManagerBackend:
         if "SecretString" in resp:
             return str(resp["SecretString"])
         if "SecretBinary" in resp:
-            return resp["SecretBinary"].decode("utf-8", errors="replace")
+            return str(resp["SecretBinary"].decode("utf-8", errors="replace"))
         return None
 
 
@@ -196,7 +196,7 @@ class GcpSecretManagerBackend:
             resp = self._client.access_secret_version(request={"name": path})
         except Exception:
             return None
-        return resp.payload.data.decode("utf-8", errors="replace")
+        return str(resp.payload.data.decode("utf-8", errors="replace"))
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +233,7 @@ def get_backend(name: str | None = None) -> SecretsBackend:
     backend = _BACKENDS[name]()
     if name == os.environ.get("MCPKERNEL_SECRETS_BACKEND", "env").lower():
         _DEFAULT_BACKEND = backend
-    return backend
+    return backend  # type: ignore[no-any-return]
 
 
 def resolve(value: str | None, *, backend: SecretsBackend | None = None) -> str | None:

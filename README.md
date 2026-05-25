@@ -15,6 +15,32 @@
 
 ---
 
+## What's new in v0.3.0
+
+- **Post-execution taint scanning** — tool results (`content` +
+  `structuredContent`) are scanned for secrets/PII *before* the agent
+  ever sees them, plus elicitation responses are auto-tainted as
+  `USER_INPUT`.
+- **RFC 8707 enforced by default** — `OAuth2Auth` now requires audience
+  binding (BREAKING; see [CHANGELOG](CHANGELOG.md)).
+- **Sigstore Bundle v0.3 + DSSE in-toto audit attestations** —
+  `mcpkernel.audit.attest_audit_batch` rolls audit records into signed
+  SLSA-ready statements.
+- **`mcpkernel policy-lint`** — static analysis over rule sets
+  (PL001–PL007: duplicate IDs, unmatchable rules, ReDoS, shadowed
+  denies, missing OWASP maps).
+- **Production deployment kit** — hardened Helm chart
+  (`deploy/helm/mcpkernel/`) and importable Grafana dashboard
+  (`deploy/grafana/`).
+- **Supply-chain hardening** — CycloneDX 1.6 SBOM attached to every
+  release, committed `uv.lock`, native CodeQL workflow, Hypothesis fuzz
+  tests for the JSON-RPC parser.
+- **Threat model + OWASP LLM Top-10 mapping** — see
+  [`THREAT_MODEL.md`](THREAT_MODEL.md) and
+  [`docs/compliance/owasp-llm-top10.md`](docs/compliance/owasp-llm-top10.md).
+
+---
+
 ## Quick Start
 
 ### Option A: Security Gateway (proxy mode)
