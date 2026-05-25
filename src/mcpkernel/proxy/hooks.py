@@ -125,6 +125,75 @@ class TaintHook(PluginHook):
                     ctx.result.content,
                 )
 
+            # Scan the result payload for taint sources the upstream leaked
+            # back. MCP 2025-11-25 splits results into ``content`` (a list of
+            # text/image/resource parts) and ``structuredContent`` (a single
+            # typed object). Both must be inspected.
+            if self._detect_fn is not None:
+                result_payload: dict[str, Any] = {}
+                if ctx.result.content:
+                    result_payload["content"] = ctx.result.content
+                if ctx.result.structured_content:
+                    result_payload["structuredContent"] = ctx.result.structured_content
+                if result_payload:
+                    result_dets = self._detect_fn(result_payload)
+                    for det in result_dets:
+                        ctx.taint_labels.add(det.label.value)
+                        self._tracker.mark(
+                            det.matched_text,
+                            det.label,
+                            source_id=f"{ctx.call.correlation_id}:result",
+                            metadata={
+                                "field": det.field_path,
+                                "tool": ctx.call.tool_name,
+                                "origin": "tool_result",
+                            },
+                        )
+                    if result_dets:
+                        logger.info(
+                            "taint detected in tool result",
+                            tool=ctx.call.tool_name,
+                            labels=[d.label.value for d in result_dets],
+                            count=len(result_dets),
+                        )
+
+        # Elicitation responses — values returned by ``elicitation/create``
+        # are user-supplied to the agent and must be treated as USER_INPUT.
+        # Proxy code may stash these on ``ctx.extra["elicitation_response"]``
+        # when forwarding the JSON-RPC reply.
+        elicitation = ctx.extra.get("elicitation_response")
+        if elicitation:
+            try:
+                from mcpkernel.taint.tracker import TaintLabel
+
+                def _walk(obj: Any, path: str) -> None:
+                    if isinstance(obj, str) and obj:
+                        ctx.taint_labels.add(TaintLabel.USER_INPUT.value)
+                        self._tracker.mark(
+                            obj,
+                            TaintLabel.USER_INPUT,
+                            source_id=f"{ctx.call.correlation_id}:elicit:{path}",
+                            metadata={
+                                "field": path,
+                                "tool": ctx.call.tool_name,
+                                "origin": "elicitation_response",
+                            },
+                        )
+                    elif isinstance(obj, dict):
+                        for k, v in obj.items():
+                            _walk(v, f"{path}.{k}" if path else k)
+                    elif isinstance(obj, list):
+                        for i, item in enumerate(obj):
+                            _walk(item, f"{path}[{i}]")
+
+                _walk(elicitation, "")
+                logger.info(
+                    "elicitation response tainted as user_input",
+                    tool=ctx.call.tool_name,
+                )
+            except Exception:
+                logger.debug("elicitation tainting failed", exc_info=True)
+
 
 class AuditHook(PluginHook):
     """Log hook: record every tool call in the append-only audit log."""
